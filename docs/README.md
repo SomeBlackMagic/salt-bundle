@@ -1,4 +1,9 @@
-# Salt Bundle Documentation
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="https://cdn.jsdelivr.net/gh/SomeBlackMagic/salt-bundle@master/docs/logo.png" width="350" alt="Salt Bandle Logo">
+  <img src="https://cdn.jsdelivr.net/gh/SomeBlackMagic/salt-bundle@master/docs/logo.png" width="350" alt="Salt Bandle Logo">
+</picture>
+
+![PyPI - Version](https://img.shields.io/pypi/v/salt-bundle)
 
 Salt Bundle is a package manager for Salt formulas, similar to pip, npm, or Helm. It allows you to version, publish, and install Salt formulas with dependency management and reproducible builds.
 
