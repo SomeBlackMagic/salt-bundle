@@ -1,0 +1,11 @@
+project: my-infrastructure
+version: 1.0.0
+vendor_dir: vendor
+
+repositories:
+  - name: main
+    url: https://github.com/example/salt-formulas
+
+dependencies:
+  nginx: "^1.0.0"
+  mysql: "2.3.1"

@@ -285,9 +285,73 @@ salt-bundle install --no-lock
 
 ## Salt Integration
 
-Salt Bundle doesn't modify Salt configuration. Integrate via `file_roots`.
+### Method 1: Automatic Salt Loader Plugin (Recommended)
 
-### Method 1: Wrapper Script
+After installing `salt-bundle` via pip, Salt automatically discovers formulas without any configuration changes.
+
+**Installation:**
+
+```bash
+pip install salt-bundle
+```
+
+**Usage:**
+
+Simply run Salt commands from your project directory:
+
+```bash
+cd my-infrastructure
+
+# Formulas automatically discovered from vendor/
+salt-call state.apply nginx
+
+# Works with salt-ssh too
+salt-ssh '*' state.apply mysql
+
+# Check discovered formulas
+salt-call pillar.get saltbundle:formulas
+
+# Verify file_roots includes vendor/
+salt-call config.get file_roots
+```
+
+**How it works:**
+
+1. After `pip install salt-bundle`, Salt automatically loads the plugin via entry points
+2. Plugin searches for `.saltbundle.yaml` in current working directory (or parent directories)
+3. Reads `vendor_dir` from config (defaults to `vendor`)
+4. Automatically adds all formulas from `vendor/` to Salt's `file_roots`
+5. No changes to `/etc/salt/master` or `/etc/salt/minion` required!
+
+**Requirements:**
+
+- `.saltbundle.yaml` must exist in current directory or parent directories
+- `vendor_dir` must be specified in config (defaults to `vendor`)
+- Formulas must be installed via `salt-bundle install` or `salt-bundle vendor`
+
+**Verification:**
+
+```bash
+# Check if loader is working - should show project info
+salt-call pillar.get saltbundle
+
+# Example output:
+# saltbundle:
+#   project_dir: /path/to/my-infrastructure
+#   vendor_dir: vendor
+#   formulas:
+#     - nginx
+#     - mysql
+#     - redis
+#   formula_paths:
+#     - /path/to/my-infrastructure/vendor/nginx
+#     - /path/to/my-infrastructure/vendor/mysql
+#     - /path/to/my-infrastructure/vendor/redis
+```
+
+See [Automatic Loader Examples](../examples/project/README.md) for more details.
+
+### Method 2: Wrapper Script
 
 Create `salt.sh` in project root:
 
@@ -326,9 +390,9 @@ chmod +x salt.sh
 ./salt.sh state.show_sls nginx
 ```
 
-### Method 2: Master Configuration
+### Method 3: Master Configuration
 
-Edit `/etc/salt/master`:
+For permanent configuration, edit `/etc/salt/master`:
 
 ```yaml
 file_roots:
@@ -347,9 +411,11 @@ Restart master:
 systemctl restart salt-master
 ```
 
-### Method 3: Minion Configuration
+**Note:** With the automatic loader plugin (Method 1), this configuration is not necessary.
 
-Edit `/etc/salt/minion`:
+### Method 4: Minion Configuration
+
+For permanent configuration, edit `/etc/salt/minion`:
 
 ```yaml
 file_roots:
@@ -367,6 +433,8 @@ Restart minion:
 ```bash
 systemctl restart salt-minion
 ```
+
+**Note:** With the automatic loader plugin (Method 1), this configuration is not necessary.
 
 ### Using Formulas
 

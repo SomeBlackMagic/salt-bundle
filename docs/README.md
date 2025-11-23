@@ -29,7 +29,8 @@ Salt Bundle provides:
 2. **Dependency Resolution** - Declare and automatically resolve formula dependencies
 3. **Package Distribution** - Publish formulas to HTTP or local repositories
 4. **Reproducible Builds** - Lock files ensure consistent deployments
-5. **Simple Integration** - Works with existing Salt setups via `file_roots`
+5. **Automatic Integration** - Salt loader plugin auto-discovers formulas (no config changes needed)
+6. **Manual Integration** - Also works with existing Salt setups via `file_roots`
 
 ### Key Concepts
 
@@ -38,6 +39,7 @@ Salt Bundle provides:
 - **Repository** - HTTP/file location containing packages and an index
 - **Project** - Your infrastructure code that depends on formulas
 - **Vendor Directory** - Local folder where dependencies are installed
+- **Salt Loader Plugin** - Automatic integration with Salt without config changes
 
 ## Quick Start
 
@@ -280,9 +282,36 @@ dependencies:
 
 ## Integration with Salt
 
-Salt Bundle doesn't modify Salt configuration. Instead, integrate via `file_roots`:
+### Option 1: Automatic Salt Loader Plugin (Recommended)
 
-### Option 1: Wrapper Script
+After `pip install salt-bundle`, Salt automatically discovers formulas in your project's `vendor/` directory.
+
+**No configuration changes needed!**
+
+```bash
+# Install salt-bundle
+pip install salt-bundle
+
+# Navigate to project with .saltbundle.yaml
+cd my-project
+
+# Run Salt commands - formulas auto-discovered from vendor/
+salt-call state.apply nginx
+salt-ssh '*' state.apply mysql
+
+# Verify loader is working
+salt-call pillar.get saltbundle
+```
+
+**How it works:**
+1. Salt automatically loads the plugin via entry points
+2. Plugin searches for `.saltbundle.yaml` in current directory
+3. Reads `vendor_dir` from config
+4. Automatically adds formulas to `file_roots`
+
+See [examples/project/README.md](../examples/project/README.md) for detailed examples.
+
+### Option 2: Wrapper Script
 
 ```bash
 #!/usr/bin/env bash
@@ -295,7 +324,7 @@ salt-call --local \
   "$@"
 ```
 
-### Option 2: Salt Master Config
+### Option 3: Salt Master Config
 
 ```yaml
 # /etc/salt/master
@@ -305,7 +334,7 @@ file_roots:
     - /srv/my-project/vendor
 ```
 
-### Option 3: Salt Minion Config
+### Option 4: Salt Minion Config
 
 ```yaml
 # /etc/salt/minion

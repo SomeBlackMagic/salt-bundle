@@ -8,6 +8,10 @@ requires-python = ">=3.10"
 [project.scripts]
 salt-bundle = "salt_bundle.cli:main"
 
+[project.entry-points."salt.loader"]
+fileserver_roots = "salt_bundle.loader:file_roots"
+ext_pillar = "salt_bundle.loader:ext_pillar"
+
 [build-system]
 requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
