@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: salt-bundle
+Version: 0.0.1
+Summary: Salt package manager prototype
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown

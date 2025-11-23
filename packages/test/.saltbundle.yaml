@@ -1,0 +1,15 @@
+name: test
+version: 0.1.8
+description: Incus virtualization formula
+keywords: [ test, unittest, incus, virtualization ]
+maintainers:
+  - name: Developer
+    email: dev@example.com
+sources:
+  - https://github.com/SomeBlackMagic/salt-bundle
+
+dependencies: []
+
+salt:
+  min_version: '3006'
+  max_version: '3009'

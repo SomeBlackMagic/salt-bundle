@@ -1,0 +1,55 @@
+name: salt-bundle release
+
+on:
+  workflow_dispatch:
+#  push:
+#    branches:
+#      - main
+#      - master
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch gh-pages branch
+        run: |
+          # Fetch gh-pages branch to get existing index.yaml
+          git fetch origin gh-pages:gh-pages || echo "gh-pages branch does not exist yet"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install salt-bundle
+        run: |
+          # pip install salt-bundle
+          # Or if installing from local repo:
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Release formulas
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          # Release formulas using GitHub provider
+          # index.yaml will be automatically committed and pushed to gh-pages branch
+          # Packages will be uploaded as GitHub release assets
+          salt-bundle release \
+            --formulas-dir ./packages \
+            --provider github \
+            --index-branch gh-pages

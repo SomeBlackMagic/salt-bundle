@@ -1,0 +1,11 @@
+.github
+.idea
+.gitignore
+.saltpkgignore
+.vscode
+.venv
+tests
+pytest.ini
+requirements.txt
+requirements-test.txt
+*.pyc

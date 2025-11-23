@@ -1,0 +1,2 @@
+[console_scripts]
+salt-bundle = salt_bundle.cli:main

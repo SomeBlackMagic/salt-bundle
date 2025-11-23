@@ -1,0 +1,12 @@
+name: foo
+version: 0.1.1
+description: Incus virtualization formula
+maintainers:
+  - name: Developer
+    email: dev@example.com
+
+dependencies: []
+
+salt:
+  min_version: '3006'
+  max_version: '3009'
