@@ -46,6 +46,13 @@ runs:
       run: |
         pip3 install --no-cache-dir salt-bundle
 
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+
     - name: Build release command
       id: build_cmd
       shell: bash
