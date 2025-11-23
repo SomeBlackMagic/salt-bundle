@@ -1,8 +1,8 @@
 apiVersion: v1
-generated: 2025-11-23 08:35:10.957682
+generated: 2025-11-23 08:41:44.461325
 packages:
   test:
-  - version: 0.1.1
-    url: https://github.com/SomeBlackMagic/salt-bundle/releases/download/test-0.1.1/test-0.1.1.tgz
-    digest: sha256:4d7bfbf43aa78e6717b81cf11ab1f4b800b9f5a688823a13dcbc30d671594c5a
-    created: 2025-11-23 08:35:10.957665
+  - version: 0.1.2
+    url: https://github.com/SomeBlackMagic/salt-bundle/releases/download/test-0.1.2/test-0.1.2.tgz
+    digest: sha256:bddcb7350ccb85ffdb10dfe157263fba517bc1a845cfbbab8e97e27abf085c2e
+    created: 2025-11-23 08:41:44.461308
