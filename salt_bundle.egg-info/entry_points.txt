@@ -1,2 +1,6 @@
 [console_scripts]
 salt-bundle = salt_bundle.cli:main
+
+[salt.loader]
+ext_pillar = salt_bundle.loader:ext_pillar
+fileserver_roots = salt_bundle.loader:file_roots
