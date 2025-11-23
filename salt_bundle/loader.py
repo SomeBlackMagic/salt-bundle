@@ -1,4 +1,4 @@
-"""Salt loader plugin for automatic formula loading from .saltbundle.yaml."""
+"""Salt loader plugin for automatic formula loading from .salt-dependencies.yaml."""
 
 import logging
 import os
@@ -9,16 +9,16 @@ log = logging.getLogger(__name__)
 
 
 def _find_project_config() -> Path | None:
-    """Find .saltbundle.yaml in current or parent directories.
+    """Find .salt-dependencies.yaml in current or parent directories.
 
     Returns:
-        Path to .saltbundle.yaml or None
+        Path to .salt-dependencies.yaml or None
     """
     current = Path.cwd()
 
     # Check current directory and parents
     for parent in [current] + list(current.parents):
-        config_file = parent / '.saltbundle.yaml'
+        config_file = parent / '.salt-dependencies.yaml'
         if config_file.exists():
             log.debug(f"Found project config at {config_file}")
             return config_file
@@ -30,7 +30,7 @@ def _load_project_config(config_path: Path) -> Dict[str, Any] | None:
     """Load project configuration.
 
     Args:
-        config_path: Path to .saltbundle.yaml
+        config_path: Path to .salt-dependencies.yaml
 
     Returns:
         Configuration dictionary or None
@@ -75,7 +75,7 @@ def file_roots(opts: Dict[str, Any]) -> List[str]:
     """Salt loader for automatic vendor formula addition to file_roots.
 
     This loader is automatically invoked by Salt at startup.
-    Searches for .saltbundle.yaml in CWD and adds vendor_dir to file_roots.
+    Searches for .salt-dependencies.yaml in CWD and adds vendor_dir to file_roots.
 
     Args:
         opts: Salt options
@@ -86,7 +86,7 @@ def file_roots(opts: Dict[str, Any]) -> List[str]:
     # Find project config
     config_path = _find_project_config()
     if not config_path:
-        log.debug("No .saltbundle.yaml found in current directory tree")
+        log.debug("No .salt-dependencies.yaml found in current directory tree")
         return []
 
     # Load config

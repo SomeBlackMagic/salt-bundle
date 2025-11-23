@@ -1,6 +1,6 @@
 name: test
 version: 0.1.8
-description: Incus virtualization formula
+description: Test formula
 keywords: [ test, unittest, incus, virtualization ]
 maintainers:
   - name: Developer

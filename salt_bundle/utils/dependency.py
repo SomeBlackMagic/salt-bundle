@@ -7,7 +7,7 @@ def parse_dependency_name(dep_key: str) -> tuple[Optional[str], str]:
     """Parse dependency key in format 'repo/package' or just 'package'.
 
     Args:
-        dep_key: Dependency key from .saltbundle.yaml
+        dep_key: Dependency key from .salt-dependencies.yaml
                  Examples: "main/nginx", "nginx", "local/my-formula"
 
     Returns:

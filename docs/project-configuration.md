@@ -1,12 +1,14 @@
 # Project Configuration Reference
 
-Complete reference for `.saltbundle.yaml` configuration in project directories.
+Complete reference for `.salt-dependencies.yaml` configuration in project directories.
 
 ## Overview
 
-The `.saltbundle.yaml` file in a project directory defines project metadata, repositories, and dependencies.
+The `.salt-dependencies.yaml` file in a Salt project directory defines project metadata, repositories, and dependencies for formula management.
 
 ## Basic Structure
+
+File: `.salt-dependencies.yaml` (in Salt project root)
 
 ```yaml
 project: my-infrastructure
@@ -266,7 +268,7 @@ repositories:
     url: https://community.example.com/
 ```
 
-**Project repositories** (`.saltbundle.yaml`):
+**Project repositories** (`.salt-dependencies.yaml`):
 ```yaml
 repositories:
   - name: company
@@ -430,7 +432,7 @@ python3 << 'EOF'
 import yaml
 from salt_bundle.models.config_models import ProjectConfig
 
-with open('.saltbundle.yaml') as f:
+with open('.salt-dependencies.yaml') as f:
     data = yaml.safe_load(f)
     config = ProjectConfig(**data)
     print(f"Valid: {config.project}")
@@ -485,8 +487,8 @@ dependencies:
 
 **Commit these files:**
 ```
-.saltbundle.yaml    # Project configuration
-salt-bundle.lock    # Locked versions
+.salt-dependencies.yaml    # Project configuration
+salt-bundle.lock           # Locked versions
 ```
 
 **Don't commit:**
@@ -582,7 +584,7 @@ mysql~=5.7.0
 redis==6.2.1
 ```
 
-Convert to `.saltbundle.yaml`:
+Convert to `.salt-dependencies.yaml`:
 
 ```yaml
 project: my-project
@@ -603,11 +605,11 @@ git submodule deinit -f formulas/nginx
 git rm -f formulas/nginx
 rm -rf .git/modules/formulas/nginx
 
-# Create .saltbundle.yaml
+# Create .salt-dependencies.yaml
 salt-bundle init --project
 
 # Add dependencies
-cat >> .saltbundle.yaml << EOF
+cat >> .salt-dependencies.yaml << EOF
 dependencies:
   nginx: "^2.0.0"
 EOF
@@ -621,21 +623,21 @@ salt-bundle install
 ### Option 1: Multiple Files
 
 ```
-.saltbundle.yaml           # Default/dev
-.saltbundle.prod.yaml      # Production
-.saltbundle.staging.yaml   # Staging
+.salt-dependencies.yaml           # Default/dev
+.salt-dependencies.prod.yaml      # Production
+.salt-dependencies.staging.yaml   # Staging
 ```
 
 **Install specific environment:**
 ```bash
-cp .saltbundle.prod.yaml .saltbundle.yaml
+cp .salt-dependencies.prod.yaml .salt-dependencies.yaml
 salt-bundle install
 ```
 
 ### Option 2: Override with Repository Priority
 
 ```yaml
-# .saltbundle.yaml
+# .salt-dependencies.yaml
 project: my-app
 repositories:
   - name: env-specific

@@ -6,13 +6,13 @@ Complete reference for all Salt Bundle file formats.
 
 Salt Bundle uses YAML for all configuration and data files:
 
-| File | Location | Purpose |
-|------|----------|---------|
-| `.saltbundle.yaml` | Formula root | Formula metadata |
-| `.saltbundle.yaml` | Project root | Project configuration |
-| `salt-bundle.lock` | Project root | Locked dependency versions |
-| `index.yaml` | Repository root | Package index |
-| `config.yaml` | `~/.config/salt-bundle/` | User global configuration |
+| File                      | Location                 | Purpose                    |
+|---------------------------|--------------------------|----------------------------|
+| `.saltbundle.yaml`        | Formula root             | Formula metadata           |
+| `.salt-dependencies.yaml` | Project root             | Project configuration      |
+| `salt-bundle.lock`        | Project root             | Locked dependency versions |
+| `index.yaml`              | Repository root          | Package index              |
+| `config.yaml`             | `~/.config/salt-bundle/` | User global configuration  |
 
 ## Formula Metadata (.saltbundle.yaml)
 
@@ -95,11 +95,11 @@ dependencies:
 - Examples: `^1.0.0`, `~2.3.1`, `>=1.0,<2.0`
 - See [Version Constraints](version-constraints.md)
 
-## Project Configuration (.saltbundle.yaml)
+## Project Configuration (.salt-dependencies.yaml)
 
 ### Location
 
-Project root directory.
+Project root directory (Salt projects).
 
 ### Format
 

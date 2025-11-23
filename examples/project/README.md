@@ -1,4 +1,4 @@
-# SaltBundle Loader Usage Example
+# salt-dependencies Loader Usage Example
 
 After installing `salt-bundle` via pip, Salt will automatically pick up the loader.
 
@@ -10,7 +10,7 @@ pip install salt-bundle
 
 ## Usage
 
-1. Create `.saltbundle.yaml` in your project root:
+1. Create `.salt-dependencies.yaml` in your project root:
 
 ```yaml
 project: my-infrastructure
@@ -37,13 +37,13 @@ salt-call state.apply nginx
 salt-ssh '*' state.apply mysql
 
 # Check that formulas are available
-salt-call pillar.get saltbundle
+salt-call pillar.get salt-dependencies
 ```
 
 ## How It Works
 
 1. When executing `salt-call` or `salt-ssh`, Salt loads all installed loaders
-2. Our loader (`salt_bundle.loader`) searches for `.saltbundle.yaml` in the current directory
+2. Our loader (`salt_bundle.loader`) searches for `.salt-dependencies.yaml` in the current directory
 3. Reads `vendor_dir` from the config
 4. Automatically adds all formulas from `vendor/` to `file_roots`
 5. Formulas become available for use
@@ -52,7 +52,7 @@ salt-call pillar.get saltbundle
 
 ```
 my-project/
-├── .saltbundle.yaml          # Project configuration
+├── .salt-dependencies.yaml          # Project configuration
 ├── vendor/                   # Installed formulas
 │   ├── nginx/
 │   │   ├── init.sls
@@ -70,7 +70,7 @@ Make sure the loader is working:
 
 ```bash
 # Should show formulas from vendor/
-salt-call pillar.get saltbundle:formulas
+salt-call pillar.get salt-dependencies:formulas
 
 # Check file_roots
 salt-call config.get file_roots

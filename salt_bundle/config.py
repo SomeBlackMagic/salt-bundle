@@ -88,7 +88,7 @@ def add_user_repository(name: str, url: str) -> None:
 
 
 def load_project_config(project_dir: Path | str = Path.cwd()) -> ProjectConfig:
-    """Load project configuration from .saltbundle.yaml.
+    """Load project configuration from .salt-dependencies.yaml.
 
     Args:
         project_dir: Project directory (defaults to current directory)
@@ -97,21 +97,21 @@ def load_project_config(project_dir: Path | str = Path.cwd()) -> ProjectConfig:
         ProjectConfig object
 
     Raises:
-        FileNotFoundError: If .saltbundle.yaml doesn't exist
+        FileNotFoundError: If .salt-dependencies.yaml doesn't exist
     """
-    config_file = Path(project_dir) / '.saltbundle.yaml'
+    config_file = Path(project_dir) / '.salt-dependencies.yaml'
     data = load_yaml(config_file)
     return ProjectConfig(**data)
 
 
 def save_project_config(config: ProjectConfig, project_dir: Path | str = Path.cwd()) -> None:
-    """Save project configuration to .saltbundle.yaml.
+    """Save project configuration to .salt-dependencies.yaml.
 
     Args:
         config: ProjectConfig object to save
         project_dir: Project directory (defaults to current directory)
     """
-    config_file = Path(project_dir) / '.saltbundle.yaml'
+    config_file = Path(project_dir) / '.salt-dependencies.yaml'
     dump_yaml(config.model_dump(exclude_none=True), config_file)
 
 
