@@ -10,12 +10,12 @@ Available for all commands:
 salt-bundle [GLOBAL_OPTIONS] COMMAND [COMMAND_OPTIONS]
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--debug` | Enable debug output |
-| `--quiet` | Suppress output |
+| Option                          | Description                                    |
+|---------------------------------|------------------------------------------------|
+| `--debug`                       | Enable debug output                            |
+| `--quiet`                       | Suppress output                                |
 | `--project-dir PATH`, `-C PATH` | Project directory (default: current directory) |
-| `--help` | Show help message |
+| `--help`                        | Show help message                              |
 
 ## Commands
 
@@ -30,11 +30,11 @@ salt-bundle init --formula
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
+| Option      | Description                      |
+|-------------|----------------------------------|
 | `--project` | Initialize project configuration |
 | `--formula` | Initialize formula configuration |
-| `--force` | Overwrite existing configuration |
+| `--force`   | Overwrite existing configuration |
 
 **Examples:**
 
@@ -72,8 +72,8 @@ salt-bundle pack [OPTIONS]
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
+| Option                         | Description                                               |
+|--------------------------------|-----------------------------------------------------------|
 | `--output-dir PATH`, `-o PATH` | Output directory for archive (default: current directory) |
 
 **Examples:**
@@ -109,16 +109,16 @@ salt-bundle index [DIRECTORY] [OPTIONS]
 
 **Arguments:**
 
-| Argument | Description |
-|----------|-------------|
+| Argument    | Description                                                    |
+|-------------|----------------------------------------------------------------|
 | `DIRECTORY` | Directory containing `.tgz` files (default: current directory) |
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
+| Option                         | Description                                                          |
+|--------------------------------|----------------------------------------------------------------------|
 | `--output-dir PATH`, `-o PATH` | Output directory for `index.yaml` (default: same as input directory) |
-| `--base-url URL`, `-u URL` | Base URL for package links in index |
+| `--base-url URL`, `-u URL`     | Base URL for package links in index                                  |
 
 **Examples:**
 
@@ -157,10 +157,10 @@ salt-bundle add-repo --name NAME --url URL
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
+| Option        | Description                |
+|---------------|----------------------------|
 | `--name NAME` | Repository name (required) |
-| `--url URL` | Repository URL (required) |
+| `--url URL`   | Repository URL (required)  |
 
 **Examples:**
 
@@ -204,9 +204,9 @@ salt-bundle install [OPTIONS]
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--no-lock` | Ignore lock file and re-resolve dependencies |
+| Option          | Description                                      |
+|-----------------|--------------------------------------------------|
+| `--no-lock`     | Ignore lock file and re-resolve dependencies     |
 | `--update-lock` | Update lock file with latest compatible versions |
 
 **Examples:**
@@ -311,15 +311,15 @@ salt-bundle release --formulas-dir PATH --provider PROVIDER [OPTIONS]
 
 **Required Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--formulas-dir PATH`, `-f PATH` | Directory containing formulas (required) |
+| Option                               | Description                                      |
+|--------------------------------------|--------------------------------------------------|
+| `--formulas-dir PATH`, `-f PATH`     | Directory containing formulas (required)         |
 | `--provider PROVIDER`, `-p PROVIDER` | Release provider: `local` or `github` (required) |
 
 **Provider: local**
 
-| Option | Description |
-|--------|-------------|
+| Option                   | Description                                                |
+|--------------------------|------------------------------------------------------------|
 | `--pkg-storage-dir PATH` | Directory for packages and index.yaml (required for local) |
 
 **Provider: github**
@@ -328,17 +328,17 @@ Requires environment variables:
 - `GITHUB_TOKEN` - Personal access token with `repo` permissions
 - `GITHUB_REPOSITORY` - Repository in format `owner/repo`
 
-| Option | Description |
-|--------|-------------|
+| Option                  | Description                                     |
+|-------------------------|-------------------------------------------------|
 | `--index-branch BRANCH` | Git branch for index.yaml (default: `gh-pages`) |
 
 **Common Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--single` | Treat formulas-dir as single formula (not subdirectories) |
-| `--skip-packaging` | Skip packaging step (use existing .tgz files) |
-| `--dry-run` | Show what would be done without doing it |
+| Option             | Description                                               |
+|--------------------|-----------------------------------------------------------|
+| `--single`         | Treat formulas-dir as single formula (not subdirectories) |
+| `--skip-packaging` | Skip packaging step (use existing .tgz files)             |
+| `--dry-run`        | Show what would be done without doing it                  |
 
 **Examples:**
 

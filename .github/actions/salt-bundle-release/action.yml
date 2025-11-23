@@ -1,0 +1,90 @@
+name: "Salt Bundle Release (GitHub Provider)"
+description: "Packages and publishes Salt formulas using salt-bundle with the GitHub provider."
+
+author: "wir-wolf"
+branding:
+  icon: "package"
+  color: "blue"
+
+inputs:
+  formulas-dir:
+    description: "Path to a formula or directory containing multiple formulas."
+    required: true
+    default: "."
+
+  index-branch:
+    description: "Branch where index.yaml will be committed. Default: gh-pages."
+    required: false
+    default: "gh-pages"
+
+  single:
+    description: "If true, treats formulas-dir as a single formula."
+    required: false
+    default: "false"
+
+  skip-packaging:
+    description: "If true, skips package creation and uses existing .tgz files."
+    required: false
+    default: "false"
+
+  dry-run:
+    description: "If true, executes release in dry-run mode."
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install salt-bundle
+      shell: bash
+      run: |
+        pip3 install --no-cache-dir salt-bundle
+
+    - name: Build release command
+      id: build_cmd
+      shell: bash
+      run: |
+        set -e
+
+        CMD="salt-bundle release \
+          --provider github \
+          --formulas-dir '${{ inputs.formulas-dir }}' \
+          --index-branch '${{ inputs.index-branch }}'"
+
+        if [ "${{ inputs.single }}" = "true" ]; then
+          CMD="$CMD --single"
+        fi
+
+        if [ "${{ inputs.skip-packaging }}" = "true" ]; then
+          CMD="$CMD --skip-packaging"
+        fi
+
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          CMD="$CMD --dry-run"
+        fi
+
+        echo "cmd=$CMD" >> "$GITHUB_OUTPUT"
+
+    - name: Run salt-bundle release
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        set -e
+
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "ERROR: GITHUB_TOKEN is not set." >&2
+          exit 1
+        fi
+
+        echo "Executing release:"
+        echo "${{ steps.build_cmd.outputs.cmd }}"
+
+        eval "${{ steps.build_cmd.outputs.cmd }}"
