@@ -10,7 +10,7 @@ Salt Bundle uses YAML for all configuration and data files:
 |---------------------------|--------------------------|----------------------------|
 | `.saltbundle.yaml`        | Formula root             | Formula metadata           |
 | `.salt-dependencies.yaml` | Project root             | Project configuration      |
-| `salt-bundle.lock`        | Project root             | Locked dependency versions |
+| `.salt-dependencies.lock` | Project root             | Locked dependency versions |
 | `index.yaml`              | Repository root          | Package index              |
 | `config.yaml`             | `~/.config/salt-bundle/` | User global configuration  |
 
@@ -165,7 +165,7 @@ dependencies:
 - Name format: `package` or `repo/package`
 - Constraint: version constraint string
 
-## Lock File (salt-bundle.lock)
+## Lock File (.salt-dependencies.lock)
 
 ### Location
 
@@ -540,7 +540,7 @@ with open('.saltbundle.yaml') as f:
 ### File Naming
 
 - Use lowercase
-- Use hyphens for readability: `.saltbundle.yaml`, `salt-bundle.lock`
+- Use hyphens for readability: `.saltbundle.yaml`, `.salt-dependencies.lock`
 
 ### Line Length
 

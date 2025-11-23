@@ -292,7 +292,7 @@ dependencies:
 
 ### Lock File Priority
 
-When `salt-bundle.lock` exists:
+When `.salt-dependencies.lock` exists:
 
 ```bash
 # Uses lock file (exact versions)
@@ -391,7 +391,7 @@ salt-bundle install --update-lock
 ./salt.sh state.apply test=True
 
 # Commit lock file
-git commit salt-bundle.lock -m "Update dependencies"
+git commit .salt-dependencies.lock -m "Update dependencies"
 ```
 
 ### Version Constraint Strategy
@@ -493,7 +493,7 @@ EOF
 salt-bundle install
 
 # Check locked version
-cat salt-bundle.lock
+cat .salt-dependencies.lock
 ```
 
 ### Check Available Versions

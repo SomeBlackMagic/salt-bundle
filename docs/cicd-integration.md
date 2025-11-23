@@ -569,7 +569,7 @@ pipeline {
     path: |
       ~/.cache/salt-bundle
       vendor/
-    key: ${{ runner.os }}-salt-bundle-${{ hashFiles('salt-bundle.lock') }}
+    key: ${{ runner.os }}-salt-bundle-${{ hashFiles('.salt-dependencies.lock') }}
     restore-keys: |
       ${{ runner.os }}-salt-bundle-
 ```

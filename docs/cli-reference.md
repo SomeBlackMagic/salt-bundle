@@ -228,17 +228,17 @@ salt-bundle --project-dir /path/to/project install
 **Behavior:**
 
 1. **With lock file** (default):
-   - Installs exact versions from `salt-bundle.lock`
+   - Installs exact versions from `.salt-dependencies.lock`
    - No dependency resolution
 
 2. **Without lock file** or `--no-lock`:
    - Reads `.saltbundle.yaml`
    - Resolves dependencies
-   - Creates `salt-bundle.lock`
+   - Creates `.salt-dependencies.lock`
 
 3. **With `--update-lock`**:
    - Re-resolves dependencies
-   - Updates `salt-bundle.lock`
+   - Updates `.salt-dependencies.lock`
    - Installs new versions
 
 **Requirements:**
@@ -247,7 +247,7 @@ salt-bundle --project-dir /path/to/project install
 
 **Output:**
 - Installs packages to `vendor/` directory
-- Creates/updates `salt-bundle.lock`
+- Creates/updates `.salt-dependencies.lock`
 
 ### vendor
 
@@ -266,7 +266,7 @@ salt-bundle vendor
 
 **Behavior:**
 - Identical to `salt-bundle install` without options
-- Only uses `salt-bundle.lock`
+- Only uses `.salt-dependencies.lock`
 - No dependency resolution
 
 **Use case:**
@@ -479,7 +479,7 @@ Location: Formula root
 
 See [Formula Configuration](formula-configuration.md).
 
-### Lock File: salt-bundle.lock
+### Lock File: .salt-dependencies.lock
 
 Location: Project root (generated)
 
@@ -578,7 +578,7 @@ salt-bundle install --update-lock
 ./test.sh
 
 # 3. Commit if successful
-git add salt-bundle.lock
+git add .salt-dependencies.lock
 git commit -m "Update dependencies"
 ```
 

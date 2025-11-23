@@ -145,10 +145,21 @@ def index(ctx, directory, output_dir, base_url):
 @click.option('--url', required=True, help='Repository URL')
 @click.pass_context
 def add_repo(ctx, name, url):
-    """Add repository to user configuration."""
+    """Add repository to project or user configuration."""
     try:
-        config.add_user_repository(name, url)
-        click.echo(f"Added repository: {name} -> {url}")
+        project_dir = ctx.obj['PROJECT_DIR']
+        local_config_file = project_dir / '.salt-dependencies.yaml'
+
+        # Check if local project config exists
+        if local_config_file.exists():
+            # Add to project configuration
+            config.add_project_repository(name, url, project_dir)
+            click.echo(f"Added repository to project: {name} -> {url}")
+        else:
+            # Add to global user configuration
+            config.add_user_repository(name, url)
+            click.echo(f"Added repository globally: {name} -> {url}")
+            click.echo(f"Note: No .salt-dependencies.yaml found in current directory, added to user config")
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
@@ -167,7 +178,7 @@ def install(ctx, no_lock, update_lock):
         try:
             proj_config = config.load_project_config(project_dir)
         except FileNotFoundError:
-            click.echo("Error: .saltbundle.yaml not found. Run 'salt-bundle init --project' first.", err=True)
+            click.echo("Error: .salt-dependencies.yaml not found. Run 'salt-bundle init --project' first.", err=True)
             sys.exit(1)
 
         vendor_dir = vendor.get_vendor_dir(project_dir, proj_config.vendor_dir)
@@ -311,7 +322,7 @@ def verify(ctx):
         try:
             lock = lockfile.load_lockfile(project_dir)
         except FileNotFoundError:
-            click.echo("Error: salt-bundle.lock not found", err=True)
+            click.echo("Error: .salt-dependencies.lock not found", err=True)
             sys.exit(1)
 
         # Load project config

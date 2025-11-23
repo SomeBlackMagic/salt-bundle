@@ -1,4 +1,4 @@
-"""Pydantic models for lock file (salt-bundle.lock)."""
+"""Pydantic models for lock file (.salt-dependencies.lock)."""
 
 from pydantic import BaseModel, Field
 

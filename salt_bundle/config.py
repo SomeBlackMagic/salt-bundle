@@ -87,6 +87,29 @@ def add_user_repository(name: str, url: str) -> None:
     save_user_config(config)
 
 
+def add_project_repository(name: str, url: str, project_dir: Path | str = Path.cwd()) -> None:
+    """Add repository to project configuration.
+
+    Args:
+        name: Repository name
+        url: Repository URL
+        project_dir: Project directory (defaults to current directory)
+
+    Raises:
+        ValueError: If repository with same name already exists
+        FileNotFoundError: If .salt-dependencies.yaml doesn't exist
+    """
+    config = load_project_config(project_dir)
+
+    # Check if repository with same name exists
+    for repo in config.repositories:
+        if repo.name == name:
+            raise ValueError(f"Repository '{name}' already exists")
+
+    config.repositories.append(RepositoryConfig(name=name, url=url))
+    save_project_config(config, project_dir)
+
+
 def load_project_config(project_dir: Path | str = Path.cwd()) -> ProjectConfig:
     """Load project configuration from .salt-dependencies.yaml.
 

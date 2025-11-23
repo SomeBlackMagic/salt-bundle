@@ -377,7 +377,7 @@ dependencies:
 
 ## Generated Files
 
-### salt-bundle.lock
+### .salt-dependencies.lock
 
 After running `salt-bundle install`, a lock file is generated:
 
@@ -488,7 +488,7 @@ dependencies:
 **Commit these files:**
 ```
 .salt-dependencies.yaml    # Project configuration
-salt-bundle.lock           # Locked versions
+.salt-dependencies.lock           # Locked versions
 ```
 
 **Don't commit:**

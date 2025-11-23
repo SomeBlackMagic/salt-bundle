@@ -54,7 +54,7 @@ Recommended structure:
 ```
 my-infrastructure/
 ├── .saltbundle.yaml    # Project configuration
-├── salt-bundle.lock    # Locked dependency versions (generated)
+├── .salt-dependencies.lock    # Locked dependency versions (generated)
 ├── salt/               # Your custom states
 │   ├── top.sls
 │   └── custom/
@@ -192,7 +192,7 @@ salt-bundle install
    - Reads `.saltbundle.yaml`
    - Fetches repository indexes
    - Resolves versions matching constraints
-   - Creates/updates `salt-bundle.lock`
+   - Creates/updates `.salt-dependencies.lock`
 
 2. **Package Download**
    - Downloads packages (with caching)
@@ -223,7 +223,7 @@ Installation complete!
 
 ### Lock File
 
-After installation, `salt-bundle.lock` is created:
+After installation, `.salt-dependencies.lock` is created:
 
 ```yaml
 dependencies:
@@ -248,7 +248,7 @@ dependencies:
 
 ### Install from Lock File
 
-When `salt-bundle.lock` exists:
+When `.salt-dependencies.lock` exists:
 
 ```bash
 # Install exact versions from lock file
@@ -485,7 +485,7 @@ salt-bundle install
 ./salt.sh state.show_sls nginx
 
 # 6. Commit
-git add .saltbundle.yaml salt-bundle.lock
+git add .saltbundle.yaml .salt-dependencies.lock
 git commit -m "Add nginx and mysql dependencies"
 ```
 
@@ -510,7 +510,7 @@ salt-bundle verify
 
 ```bash
 # 1. Check current versions
-cat salt-bundle.lock
+cat .salt-dependencies.lock
 
 # 2. Update dependencies
 salt-bundle install --update-lock
@@ -519,7 +519,7 @@ salt-bundle install --update-lock
 ./salt.sh state.apply test=True
 
 # 4. Commit if successful
-git add salt-bundle.lock
+git add .salt-dependencies.lock
 git commit -m "Update dependencies"
 ```
 
@@ -549,7 +549,7 @@ app-depends-on-redis:
 EOF
 
 # 5. Commit
-git add .saltbundle.yaml salt-bundle.lock salt/app.sls
+git add .saltbundle.yaml .salt-dependencies.lock salt/app.sls
 git commit -m "Add redis dependency"
 ```
 

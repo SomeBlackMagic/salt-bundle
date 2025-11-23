@@ -230,7 +230,7 @@ dependencies:
   main/redis: ">=6.0,<7.0"
 ```
 
-### Lock File: `salt-bundle.lock`
+### Lock File: `.salt-dependencies.lock`
 
 ```yaml
 dependencies:

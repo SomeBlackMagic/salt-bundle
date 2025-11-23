@@ -16,9 +16,9 @@ def load_lockfile(project_dir: Path | str = Path.cwd()) -> LockFile:
         LockFile object (empty if file doesn't exist)
 
     Raises:
-        FileNotFoundError: If salt-bundle.lock doesn't exist
+        FileNotFoundError: If .salt-dependencies.lock doesn't exist
     """
-    lock_path = Path(project_dir) / 'salt-bundle.lock'
+    lock_path = Path(project_dir) / '.salt-dependencies.lock'
     
     if not lock_path.exists():
         return LockFile()
@@ -34,7 +34,7 @@ def save_lockfile(lockfile: LockFile, project_dir: Path | str = Path.cwd()) -> N
         lockfile: LockFile object to save
         project_dir: Project directory (defaults to current directory)
     """
-    lock_path = Path(project_dir) / 'salt-bundle.lock'
+    lock_path = Path(project_dir) / '.salt-dependencies.lock'
     dump_yaml(lockfile.model_dump(), lock_path)
 
 
@@ -45,9 +45,9 @@ def lockfile_exists(project_dir: Path | str = Path.cwd()) -> bool:
         project_dir: Project directory (defaults to current directory)
 
     Returns:
-        True if salt-bundle.lock exists
+        True if .salt-dependencies.lock exists
     """
-    lock_path = Path(project_dir) / 'salt-bundle.lock'
+    lock_path = Path(project_dir) / '.salt-dependencies.lock'
     return lock_path.exists()
 
 
