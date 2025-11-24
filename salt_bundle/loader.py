@@ -71,7 +71,7 @@ def _get_vendor_paths(project_dir: Path, vendor_dir: str) -> List[Path]:
     return paths
 
 
-def file_roots(opts: Dict[str, Any]) -> List[str]:
+def file_roots(opts: Dict[str, Any]=None) -> Dict[str, List[str]]:
     """Salt loader for automatic vendor formula addition to file_roots.
 
     This loader is automatically invoked by Salt at startup.
@@ -101,12 +101,16 @@ def file_roots(opts: Dict[str, Any]) -> List[str]:
     formula_paths = _get_vendor_paths(project_dir, vendor_dir)
 
     if formula_paths:
-        log.info(f"SaltBundle: Added {len(formula_paths)} formulas from {project_dir / vendor_dir}")
+        log.debug(f"SaltBundle: Added {len(formula_paths)} formulas from {project_dir / vendor_dir}")
 
-    return [str(path) for path in formula_paths]
+    return {
+        'base': [str(path) for path in formula_paths]
+    }
 
 
-def ext_pillar(minion_id: str, pillar: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+def ext_pillar(minion_id=None, pillar=None, *args, **kwargs):
+    if minion_id is None or pillar is None:
+        return {}
     """External pillar for adding saltbundle information to pillar.
 
     Args:
