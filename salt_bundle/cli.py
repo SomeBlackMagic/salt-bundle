@@ -250,11 +250,11 @@ def install(ctx, no_lock, update_lock):
                                 break
                     except Exception as e:
                         if repo_name:
-                            # Если указан конкретный repo - это ошибка
+                            # If a specific repo is specified, this is an error
                             click.echo(f"Error: Failed to fetch from {repo.name}: {e}", err=True)
                             sys.exit(1)
                         else:
-                            # Если перебираем все - предупреждение
+                            # If we go through everything - a warning
                             click.echo(f"Warning: Failed to fetch from {repo.name}: {e}", err=True)
 
                 if not resolved:
@@ -498,6 +498,85 @@ def release_cmd(ctx, formulas_dir, single, provider, pkg_storage_dir, index_bran
 
         if dry_run:
             click.echo("\n[DRY RUN] No changes were made")
+
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        if ctx.obj.get('DEBUG'):
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+
+
+@cli.command()
+@click.option('--cache-dir', type=click.Path(), help='Salt cache directory (auto-detected if not specified)')
+@click.pass_context
+def sync(ctx, cache_dir):
+    """Sync vendor formula modules to Salt's extmods cache.
+
+    This command copies custom modules (_modules, _states, etc.) from vendor
+    formulas to Salt's extension modules cache, making them available to Salt.
+    """
+    import shutil
+
+    try:
+        project_dir = ctx.obj['PROJECT_DIR']
+
+        # Load project config
+        proj_config = config.load_project_config(project_dir)
+        vendor_dir = vendor.get_vendor_dir(project_dir, proj_config.vendor_dir)
+
+        # Find Salt cache dir
+        if not cache_dir:
+            # Try to auto-detect from opts
+            from salt_bundle.ext.loader import _find_project_config
+            cfg_path = _find_project_config()
+            if cfg_path:
+                # Assume standard structure
+                salt_root = cfg_path.parent
+                cache_dir = salt_root / "var" / "cache" / "salt" / "minion" / "extmods"
+            else:
+                click.echo("Error: Could not auto-detect Salt cache directory. Use --cache-dir", err=True)
+                sys.exit(1)
+
+        cache_path = Path(cache_dir)
+        click.echo(f"Syncing to: {cache_path}")
+
+        # Module types to sync
+        module_types = ['modules', 'states', 'grains', 'pillar', 'returners', 'runners',
+                       'output', 'utils', 'renderers', 'engines', 'proxy', 'beacons']
+
+        synced = []
+
+        # Iterate through vendor formulas
+        for formula_dir in vendor_dir.iterdir():
+            if not formula_dir.is_dir() or formula_dir.name.startswith('.'):
+                continue
+
+            formula_name = formula_dir.name
+
+            # Check each module type
+            for mod_type in module_types:
+                src_dir = formula_dir / f"_{mod_type}"
+                if not src_dir.exists():
+                    continue
+
+                dst_dir = cache_path / mod_type
+                dst_dir.mkdir(parents=True, exist_ok=True)
+
+                # Copy all .py files
+                for src_file in src_dir.glob("*.py"):
+                    dst_file = dst_dir / src_file.name
+                    shutil.copy2(src_file, dst_file)
+                    synced.append(f"{mod_type}/{src_file.name} (from {formula_name})")
+                    if not ctx.obj.get('QUIET'):
+                        click.echo(f"  ✓ {mod_type}/{src_file.name}")
+
+        if synced:
+            click.echo(f"\nSynced {len(synced)} module(s)")
+        else:
+            click.echo("No modules found to sync")
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)

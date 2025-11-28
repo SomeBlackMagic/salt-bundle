@@ -1,6 +1,6 @@
 [project]
 name = "salt-bundle"
-version = "0.1.6"
+version = "0.1.7"
 description = "Salt package manager prototype"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,8 +17,23 @@ dependencies = [
 salt-bundle = "salt_bundle.cli:main"
 
 [project.entry-points."salt.loader"]
-fileserver_roots = "salt_bundle.loader:file_roots"
-ext_pillar = "salt_bundle.loader:ext_pillar"
+module_dirs = "salt_bundle.ext.loader:module_dirs"
+states_dirs = "salt_bundle.ext.loader:states_dirs"
+grains_dirs = "salt_bundle.ext.loader:grains_dirs"
+pillar_dirs = "salt_bundle.ext.loader:pillar_dirs"
+returner_dirs = "salt_bundle.ext.loader:returner_dirs"
+runner_dirs = "salt_bundle.ext.loader:runner_dirs"
+outputter_dirs = "salt_bundle.ext.loader:outputter_dirs"
+utils_dirs = "salt_bundle.ext.loader:utils_dirs"
+render_dirs = "salt_bundle.ext.loader:render_dirs"
+engines_dirs = "salt_bundle.ext.loader:engines_dirs"
+proxy_dirs = "salt_bundle.ext.loader:proxy_dirs"
+beacons_dirs = "salt_bundle.ext.loader:beacons_dirs"
+fileserver_dirs = "salt_bundle.ext.loader:fileserver_dirs"
+configure = "salt_bundle.ext.loader:configure"
+
+[project.entry-points."salt.loader.ext_pillar"]
+saltbundle = "salt_bundle.ext.pillar.saltbundle:ext_pillar"
 
 [build-system]
 requires = ["setuptools>=64", "wheel", "build"]

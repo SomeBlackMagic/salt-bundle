@@ -1,5 +1,0 @@
-dist
-docs
-examples
-salt_bundle
-test
