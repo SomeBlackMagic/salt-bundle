@@ -1,4 +1,4 @@
-name: Build and Release DEB
+name: Build DEB (vendored python)
 
 on:
   push:
@@ -12,52 +12,76 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      PACKAGE_NAME: salt-bundle
+      INSTALL_PREFIX: /usr/lib/salt-bundle
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Extract version from tag
-        id: version
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Install system dependencies
+      - name: Install build dependencies
         run: |
           sudo apt update
           sudo apt install -y \
+            python3 \
+            python3-pip \
             ruby \
             ruby-dev \
-            build-essential \
-            python3 \
-            python3-pip
+            build-essential
 
       - name: Install fpm
         run: sudo gem install --no-document fpm
 
-      - name: Build Python wheel
+      - name: Build wheel
         run: |
-          python3 -m pip install --upgrade build
+          python3 -m pip install --upgrade pip build wheel
           python3 -m build --wheel
+
+      - name: Vendor python dependencies
+        run: |
+          mkdir -p vendor
+          pip install \
+            --no-deps \
+            --target vendor \
+            dist/*.whl
+
+      - name: Create entrypoint script
+        run: |
+          mkdir -p bin
+          cat > bin/salt-bundle <<'EOF'
+          #!/usr/bin/env python3
+          import sys
+          sys.path.insert(0, "/usr/lib/salt-bundle")
+          from salt_bundle.cli import main
+          main()
+          EOF
+          chmod +x bin/salt-bundle
 
       - name: Build DEB package
         run: |
           fpm \
-            -s python \
+            -s dir \
             -t deb \
-            --python-bin python3 \
-            --name salt-bundle \
-            --version "${VERSION}" \
-            --architecture amd64 \
-            --description "MyApp description" \
-            --url "https://github.com/${{ github.repository }}" \
+            -n "${PACKAGE_NAME}" \
+            -v "${VERSION}" \
+            -a amd64 \
+            --description "Salt Bundle CLI tool" \
             --license "MIT" \
-            dist/*.whl
+            --url "https://github.com/${{ github.repository }}" \
+            --depends python3 \
+            vendor/=${INSTALL_PREFIX} \
+            bin/salt-bundle=/usr/bin/salt-bundle
 
-      - name: Upload DEB as artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: deb-package
+          name: deb
           path: "*.deb"
 
       - name: Upload assets to existing release
