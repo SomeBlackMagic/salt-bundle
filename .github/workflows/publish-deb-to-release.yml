@@ -1,0 +1,61 @@
+name: Build and Release DEB
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            ruby \
+            ruby-dev \
+            build-essential \
+            python3 \
+            python3-pip
+
+      - name: Install fpm
+        run: sudo gem install --no-document fpm
+
+      - name: Build Python wheel
+        run: |
+          python3 -m pip install --upgrade build
+          python3 -m build --wheel
+
+      - name: Build DEB package
+        run: |
+          fpm \
+            -s python \
+            -t deb \
+            --python-bin python3 \
+            --name salt-bundle \
+            --version "${VERSION}" \
+            --architecture amd64 \
+            --description "MyApp description" \
+            --url "https://github.com/${{ github.repository }}" \
+            --license "MIT" \
+            dist/*.whl
+
+      - name: Upload DEB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: "*.deb"
