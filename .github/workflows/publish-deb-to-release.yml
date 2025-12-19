@@ -59,3 +59,11 @@ jobs:
         with:
           name: deb-package
           path: "*.deb"
+
+      - name: Upload assets to existing release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null
+          gh release upload "$TAG_NAME" *.deb --repo "$GITHUB_REPOSITORY" --clobber
