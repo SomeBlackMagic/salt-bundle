@@ -1,4 +1,4 @@
-name: Build DEB (vendored python)
+name: Build DEB (salt python runtime)
 
 on:
   push:
@@ -13,69 +13,59 @@ jobs:
       contents: write
 
     env:
-      PACKAGE_NAME: salt-bundle
-      INSTALL_PREFIX: /usr/lib/salt-bundle
+      PKG: salt-bundle
+      LIBDIR: /usr/lib/salt-bundle
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Extract version from tag
+      - name: Version from tag
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-      - name: Install build dependencies
+      - name: Build deps
         run: |
-          sudo apt update
-          sudo apt install -y \
-            python3 \
-            python3-pip \
-            ruby \
-            ruby-dev \
-            build-essential
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip ruby ruby-dev build-essential
 
       - name: Install fpm
         run: sudo gem install --no-document fpm
 
       - name: Build wheel
         run: |
-          python3 -m pip install --upgrade pip build wheel
+          python3 -m pip install --upgrade pip build
           python3 -m build --wheel
 
-      - name: Vendor python dependencies
+      - name: Vendor ONLY non-salt deps
         run: |
-          mkdir -p vendor
-          pip install \
-            --no-deps \
-            --target vendor \
-            dist/*.whl
+          mkdir vendor
+          pip install --no-deps --target vendor dist/*.whl
+          pip install --target vendor \
+            "pydantic>=2" \
+            "semver>=3"
 
-      - name: Create entrypoint script
+      - name: salt-bundle entrypoint (salt python)
         run: |
           mkdir -p bin
           cat > bin/salt-bundle <<'EOF'
-          #!/usr/bin/env python3
+          #!/bin/sh
+          exec salt-call --local --out=quiet --python-shell <<'PY'
           import sys
           sys.path.insert(0, "/usr/lib/salt-bundle")
           from salt_bundle.cli import main
           main()
+          PY
           EOF
           chmod +x bin/salt-bundle
 
-      - name: Build DEB package
+      - name: Build deb
         run: |
-          fpm \
-            -s dir \
-            -t deb \
-            -n "${PACKAGE_NAME}" \
+          fpm -s dir -t deb \
+            -n "${PKG}" \
             -v "${VERSION}" \
             -a amd64 \
-            --description "Salt Bundle CLI tool" \
-            --license "MIT" \
-            --url "https://github.com/${{ github.repository }}" \
-            --depends python3 \
-            vendor/=${INSTALL_PREFIX} \
+            --depends salt-common \
+            vendor/=${LIBDIR} \
             bin/salt-bundle=/usr/bin/salt-bundle
 
       - name: Upload artifact
