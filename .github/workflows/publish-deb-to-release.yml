@@ -42,19 +42,31 @@ jobs:
           pip install --no-deps --target vendor dist/*.whl
           pip install --target vendor \
             "pydantic>=2" \
-            "semver>=3"
+            "semver>=3" \
+            "click>=8"
 
       - name: salt-bundle entrypoint (salt python)
         run: |
           mkdir -p bin
           cat > bin/salt-bundle <<'EOF'
           #!/bin/sh
-          exec salt-call --local --out=quiet --python-shell <<'PY'
+          set -e
+          
+          if [ -x /opt/saltstack/salt/bin/python3 ]; then
+            PYTHON=/opt/saltstack/salt/bin/python3
+          elif [ -x /usr/bin/python3 ]; then
+            PYTHON=/usr/bin/python3
+          else
+            echo "ERROR: Salt python not found" >&2
+            exit 1
+          fi
+          
+          exec "$PYTHON" - <<'EOF'
           import sys
           sys.path.insert(0, "/usr/lib/salt-bundle")
+          
           from salt_bundle.cli import main
           main()
-          PY
           EOF
           chmod +x bin/salt-bundle
 
