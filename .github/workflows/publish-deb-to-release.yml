@@ -39,11 +39,15 @@ jobs:
       - name: Vendor ONLY non-salt deps
         run: |
           mkdir vendor
-          pip install --no-deps --target vendor dist/*.whl
           pip install --target vendor \
             "pydantic>=2" \
             "semver>=3" \
             "click>=8"
+
+      - name: Extract package to lib/
+        run: |
+          mkdir -p lib
+          unzip -q dist/*.whl -d lib/
 
       - name: salt-bundle entrypoint (salt python)
         run: |
@@ -81,7 +85,7 @@ jobs:
             --depends salt-common \
             --prefix / \
             vendor/=/opt/saltstack/salt-bundle/vendor \
-            salt_bundle/=/opt/saltstack/salt-bundle/lib/salt_bundle \
+            lib/=/opt/saltstack/salt-bundle/lib \
             bin/salt-bundle=/opt/saltstack/bin/salt-bundle \
             pth/salt-bundle.pth=/opt/saltstack/salt/lib/python3.10/site-packages/salt-bundle.pth
 
