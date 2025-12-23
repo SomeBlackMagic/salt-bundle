@@ -14,7 +14,7 @@ jobs:
 
     env:
       PKG: salt-bundle
-      LIBDIR: /usr/lib/salt-bundle
+      INSTALL_ROOT: /opt/saltstack/salt-bundle
 
     steps:
       - uses: actions/checkout@v4
@@ -48,10 +48,10 @@ jobs:
       - name: salt-bundle entrypoint (salt python)
         run: |
           mkdir -p bin
-          cat > bin/salt-bundle <<'EOF'
+          cat > bin/salt-bundle <<'OUTER_EOF'
           #!/bin/sh
           set -e
-          
+
           if [ -x /opt/saltstack/salt/bin/python3 ]; then
             PYTHON=/opt/saltstack/salt/bin/python3
           elif [ -x /usr/bin/python3 ]; then
@@ -60,15 +60,17 @@ jobs:
             echo "ERROR: Salt python not found" >&2
             exit 1
           fi
-          
-          exec "$PYTHON" - <<'EOF'
-          import sys
-          sys.path.insert(0, "/usr/lib/salt-bundle")
-          
-          from salt_bundle.cli import main
-          main()
-          EOF
+
+          export PYTHONPATH="/opt/saltstack/salt-bundle/lib:/opt/saltstack/salt-bundle/vendor:${PYTHONPATH}"
+          exec "$PYTHON" -m salt_bundle "$@"
+          OUTER_EOF
           chmod +x bin/salt-bundle
+
+      - name: Create pth file for Salt loader
+        run: |
+          mkdir -p pth
+          echo "/opt/saltstack/salt-bundle/lib" > pth/salt-bundle.pth
+          echo "/opt/saltstack/salt-bundle/vendor" >> pth/salt-bundle.pth
 
       - name: Build deb
         run: |
@@ -77,13 +79,15 @@ jobs:
             -v "${VERSION}" \
             -a amd64 \
             --depends salt-common \
-            vendor/=${LIBDIR} \
-            bin/salt-bundle=/usr/bin/salt-bundle
+            --prefix / \
+            vendor/=/opt/saltstack/salt-bundle/vendor \
+            salt_bundle/=/opt/saltstack/salt-bundle/lib/salt_bundle \
+            bin/salt-bundle=/opt/saltstack/bin/salt-bundle \
+            pth/salt-bundle.pth=/opt/saltstack/salt/lib/python3.10/site-packages/salt-bundle.pth
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: deb
           path: "*.deb"
 
       - name: Upload assets to existing release
