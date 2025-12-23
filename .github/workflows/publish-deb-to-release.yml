@@ -76,6 +76,11 @@ jobs:
           echo "/opt/saltstack/salt-bundle/lib" > pth/salt-bundle.pth
           echo "/opt/saltstack/salt-bundle/vendor" >> pth/salt-bundle.pth
 
+      - name: Create symlink for /usr/bin
+        run: |
+          mkdir -p usr-bin
+          ln -s /opt/saltstack/bin/salt-bundle usr-bin/salt-bundle
+
       - name: Build deb
         run: |
           fpm -s dir -t deb \
@@ -87,6 +92,7 @@ jobs:
             vendor/=/opt/saltstack/salt-bundle/vendor \
             lib/=/opt/saltstack/salt-bundle/lib \
             bin/salt-bundle=/opt/saltstack/bin/salt-bundle \
+            usr-bin/salt-bundle=/usr/bin/salt-bundle \
             pth/salt-bundle.pth=/opt/saltstack/salt/lib/python3.10/site-packages/salt-bundle.pth
 
       - name: Upload artifact
