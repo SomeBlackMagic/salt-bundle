@@ -291,6 +291,21 @@ def install(ctx, no_lock, update_lock):
 
         click.echo("Installation complete!")
 
+        # Sync Salt extensions
+        try:
+            import subprocess
+            click.echo("\nSyncing Salt extensions...")
+            result = subprocess.run(['salt-call', '--local', 'saltutil.sync_all'],
+                                   capture_output=True, text=True, check=False)
+            if result.returncode == 0:
+                click.echo("✓ Salt extensions synced")
+            else:
+                click.echo(f"Warning: Failed to sync Salt extensions: {result.stderr}", err=True)
+        except FileNotFoundError:
+            click.echo("Warning: salt-call not found, skipping extension sync", err=True)
+        except Exception as e:
+            click.echo(f"Warning: Failed to sync Salt extensions: {e}", err=True)
+
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
         if ctx.obj.get('DEBUG'):
@@ -577,6 +592,21 @@ def sync(ctx, cache_dir):
             click.echo(f"\nSynced {len(synced)} module(s)")
         else:
             click.echo("No modules found to sync")
+
+        # Sync Salt extensions
+        try:
+            import subprocess
+            click.echo("\nSyncing Salt extensions...")
+            result = subprocess.run(['salt-call', '--local', 'saltutil.sync_all'],
+                                   capture_output=True, text=True, check=False)
+            if result.returncode == 0:
+                click.echo("✓ Salt extensions synced")
+            else:
+                click.echo(f"Warning: Failed to sync Salt extensions: {result.stderr}", err=True)
+        except FileNotFoundError:
+            click.echo("Warning: salt-call not found, skipping extension sync", err=True)
+        except Exception as e:
+            click.echo(f"Warning: Failed to sync Salt extensions: {e}", err=True)
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
