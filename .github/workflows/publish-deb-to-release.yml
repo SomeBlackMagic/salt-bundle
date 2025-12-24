@@ -49,6 +49,14 @@ jobs:
           mkdir -p lib
           unzip -q dist/*.whl -d lib/
 
+      - name: Prepare dist-info for Salt site-packages
+        run: |
+          mkdir -p site-packages
+          # Copy ONLY .dist-info to Salt's site-packages for entry_points discovery
+          # This allows importlib.metadata to find our entry_points while keeping
+          # the actual code isolated in /opt/saltstack/salt-bundle/lib
+          cp -r lib/salt_bundle-*.dist-info site-packages/
+
       - name: salt-bundle entrypoint (salt python)
         run: |
           mkdir -p bin
@@ -93,7 +101,8 @@ jobs:
             lib/=/opt/saltstack/salt-bundle/lib \
             bin/salt-bundle=/opt/saltstack/bin/salt-bundle \
             usr-bin/salt-bundle=/usr/bin/salt-bundle \
-            pth/salt-bundle.pth=/opt/saltstack/salt/lib/python3.10/site-packages/salt-bundle.pth
+            pth/salt-bundle.pth=/opt/saltstack/salt/lib/python3.10/site-packages/salt-bundle.pth \
+            site-packages/=/opt/saltstack/salt/lib/python3.10/site-packages/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
