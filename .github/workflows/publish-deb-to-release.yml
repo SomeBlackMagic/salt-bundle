@@ -78,11 +78,60 @@ jobs:
           OUTER_EOF
           chmod +x bin/salt-bundle
 
-      - name: Create pth file for Salt loader
+      - name: Create postinst script for symlinks
         run: |
-          mkdir -p pth
-          echo "/opt/saltstack/salt-bundle/lib" > pth/salt-bundle.pth
-          echo "/opt/saltstack/salt-bundle/vendor" >> pth/salt-bundle.pth
+          mkdir -p scripts
+          cat > scripts/postinst <<'EOF'
+#!/bin/sh
+set -e
+
+SITE_PACKAGES="/opt/saltstack/salt/lib/python3.10/site-packages"
+
+# Create symlink for main module
+if [ ! -e "${SITE_PACKAGES}/salt_bundle" ]; then
+  ln -s /opt/saltstack/salt-bundle/lib/salt_bundle "${SITE_PACKAGES}/salt_bundle"
+fi
+
+# Create symlinks for vendor dependencies
+for vendordir in /opt/saltstack/salt-bundle/vendor/*; do
+  if [ -d "$vendordir" ]; then
+    basename=$(basename "$vendordir")
+    if [ ! -e "${SITE_PACKAGES}/${basename}" ]; then
+      ln -s "$vendordir" "${SITE_PACKAGES}/${basename}"
+    fi
+  fi
+done
+
+exit 0
+EOF
+          chmod +x scripts/postinst
+
+      - name: Create prerm script for cleanup
+        run: |
+          cat > scripts/prerm <<'EOF'
+#!/bin/sh
+set -e
+
+SITE_PACKAGES="/opt/saltstack/salt/lib/python3.10/site-packages"
+
+# Remove symlinks created by postinst
+if [ -L "${SITE_PACKAGES}/salt_bundle" ]; then
+  rm -f "${SITE_PACKAGES}/salt_bundle"
+fi
+
+# Remove vendor symlinks
+for vendordir in /opt/saltstack/salt-bundle/vendor/*; do
+  if [ -d "$vendordir" ]; then
+    basename=$(basename "$vendordir")
+    if [ -L "${SITE_PACKAGES}/${basename}" ]; then
+      rm -f "${SITE_PACKAGES}/${basename}"
+    fi
+  fi
+done
+
+exit 0
+EOF
+          chmod +x scripts/prerm
 
       - name: Create symlink for /usr/bin
         run: |
@@ -96,12 +145,13 @@ jobs:
             -v "${VERSION}" \
             -a amd64 \
             --depends salt-common \
+            --after-install scripts/postinst \
+            --before-remove scripts/prerm \
             --prefix / \
             vendor/=/opt/saltstack/salt-bundle/vendor \
             lib/=/opt/saltstack/salt-bundle/lib \
             bin/salt-bundle=/opt/saltstack/bin/salt-bundle \
             usr-bin/salt-bundle=/usr/bin/salt-bundle \
-            pth/salt-bundle.pth=/opt/saltstack/salt/lib/python3.10/site-packages/salt-bundle.pth \
             site-packages/=/opt/saltstack/salt/lib/python3.10/site-packages/
 
       - name: Upload artifact
