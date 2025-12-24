@@ -59,10 +59,10 @@ def _load_project_config(cfg_path: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _get_vendor_roots() -> List[str]:
+def _get_vendor_roots() -> Dict[str, str]:
     """
-    Get list of all formula directories in vendor/.
-    Returns absolute paths to each formula.
+    Get mapping of formula names to their directories.
+    Returns dict: {formula_name: absolute_path}
     """
     if _CACHE['vendor_roots'] is not None:
         return _CACHE['vendor_roots']
@@ -70,11 +70,11 @@ def _get_vendor_roots() -> List[str]:
     cfg_path = _find_project_config()
     if not cfg_path:
         log.debug("bundlefs: no .salt-dependencies.yaml found")
-        return []
+        return {}
 
     cfg = _load_project_config(cfg_path)
     if not cfg:
-        return []
+        return {}
 
     project_dir = cfg_path.parent
     vendor_dir_name = cfg.get("vendor_dir", "vendor")
@@ -82,17 +82,16 @@ def _get_vendor_roots() -> List[str]:
 
     if not vendor_path.exists():
         log.warning(f"bundlefs: vendor dir not found: {vendor_path}")
-        return []
+        return {}
 
-    # Collect all subdirectories in vendor/
-    roots = []
+    # Collect all subdirectories in vendor/ as name -> path mapping
+    roots = {}
     for item in vendor_path.iterdir():
         if item.is_dir() and not item.name.startswith("."):
-            roots.append(str(item.absolute()))
+            roots[item.name] = str(item.absolute())
 
     if roots:
-        formula_names = [Path(r).name for r in roots]
-        log.info(f"bundlefs: discovered formulas: {', '.join(formula_names)}")
+        log.info(f"bundlefs: discovered formulas: {', '.join(roots.keys())}")
 
     _CACHE['vendor_roots'] = roots
     return roots
@@ -126,6 +125,9 @@ def find_file(path, saltenv="base", **kwargs):
     '''
     Find a file in the bundlefs fileserver.
 
+    Path format: formula_name/file.sls
+    Example: nginx/init.sls -> vendor/nginx/init.sls
+
     Returns dict with path info or empty dict if not found.
     Must include 'path' and 'rel' keys at minimum.
     '''
@@ -133,15 +135,29 @@ def find_file(path, saltenv="base", **kwargs):
     if not roots:
         return {'path': '', 'rel': ''}
 
-    for root in roots:
-        full_path = os.path.join(root, path)
-        if os.path.isfile(full_path):
-            stat = os.stat(full_path)
-            return {
-                'path': full_path,
-                'rel': path,
-                'stat': list(stat),
-            }
+    # Split path into formula_name and relative path
+    parts = path.split('/', 1)
+    if len(parts) < 1:
+        return {'path': '', 'rel': ''}
+
+    formula_name = parts[0]
+    file_path = parts[1] if len(parts) > 1 else ''
+
+    # Check if formula exists
+    if formula_name not in roots:
+        return {'path': '', 'rel': ''}
+
+    # Build full path: vendor/formula_name/file_path
+    formula_root = roots[formula_name]
+    full_path = os.path.join(formula_root, file_path) if file_path else formula_root
+
+    if os.path.isfile(full_path):
+        stat = os.stat(full_path)
+        return {
+            'path': full_path,
+            'rel': path,
+            'stat': list(stat),
+        }
 
     return {'path': '', 'rel': ''}
 
@@ -157,12 +173,13 @@ def file_list(load):
     result = []
     roots = _get_vendor_roots()
 
-    for root in roots:
+    for formula_name, root in roots.items():
         for dirpath, _, filenames in os.walk(root):
             for filename in filenames:
                 full = os.path.join(dirpath, filename)
                 rel = os.path.relpath(full, root)
-                result.append(rel)
+                # Prefix with formula name
+                result.append(f"{formula_name}/{rel}")
 
     return result
 
@@ -173,15 +190,21 @@ def file_list(load):
 def dir_list(load):
     '''
     Return list of all directories in the fileserver.
+
+    Returns paths in format: formula_name/path/to/dir
     '''
     result = set()
     roots = _get_vendor_roots()
 
-    for root in roots:
+    for formula_name, root in roots.items():
+        # Add formula root itself
+        result.add(formula_name)
+
         for dirpath, _, _ in os.walk(root):
             rel = os.path.relpath(dirpath, root)
             if rel != '.':
-                result.add(rel)
+                # Prefix with formula name
+                result.add(f"{formula_name}/{rel}")
 
     return sorted(result)
 
