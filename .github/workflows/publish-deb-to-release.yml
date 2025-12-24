@@ -41,6 +41,9 @@ jobs:
           mkdir vendor
           pip install --target vendor \
             "pydantic>=2" \
+            "pydantic-core" \
+            "typing-extensions" \
+            "annotated-types" \
             "semver>=3" \
             "click>=8"
 
@@ -92,12 +95,17 @@ jobs:
             ln -s /opt/saltstack/salt-bundle/lib/salt_bundle "${SITE_PACKAGES}/salt_bundle"
           fi
 
-          # Create symlinks for vendor dependencies
-          for vendordir in /opt/saltstack/salt-bundle/vendor/*; do
-            if [ -d "$vendordir" ]; then
-              basename=$(basename "$vendordir")
+          # Create symlinks for vendor dependencies (directories and .py files)
+          for vendoritem in /opt/saltstack/salt-bundle/vendor/*; do
+            basename=$(basename "$vendoritem")
+            # Skip special items
+            case "$basename" in
+              __pycache__|*.dist-info|bin) continue ;;
+            esac
+
+            if [ -d "$vendoritem" ] || [ -f "$vendoritem" ]; then
               if [ ! -e "${SITE_PACKAGES}/${basename}" ]; then
-                ln -s "$vendordir" "${SITE_PACKAGES}/${basename}"
+                ln -s "$vendoritem" "${SITE_PACKAGES}/${basename}"
               fi
             fi
           done
@@ -119,13 +127,15 @@ jobs:
             rm -f "${SITE_PACKAGES}/salt_bundle"
           fi
 
-          # Remove vendor symlinks
-          for vendordir in /opt/saltstack/salt-bundle/vendor/*; do
-            if [ -d "$vendordir" ]; then
-              basename=$(basename "$vendordir")
-              if [ -L "${SITE_PACKAGES}/${basename}" ]; then
-                rm -f "${SITE_PACKAGES}/${basename}"
-              fi
+          # Remove vendor symlinks (directories and files)
+          for vendoritem in /opt/saltstack/salt-bundle/vendor/*; do
+            basename=$(basename "$vendoritem")
+            case "$basename" in
+              __pycache__|*.dist-info|bin) continue ;;
+            esac
+
+            if [ -L "${SITE_PACKAGES}/${basename}" ]; then
+              rm -f "${SITE_PACKAGES}/${basename}"
             fi
           done
 
