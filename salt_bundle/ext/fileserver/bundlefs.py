@@ -126,22 +126,58 @@ def find_file(path, saltenv="base", **kwargs):
     '''
     Find a file in the bundlefs fileserver.
 
+    Supports two path formats:
+    1. formula_name/file.sls -> vendor/formula_name/file.sls
+    2. _states/incus.py -> vendor/incus/_states/incus.py (for Salt module sync)
+
     Returns dict with path info or empty dict if not found.
-    Must include 'path' and 'rel' keys at minimum.
     '''
     roots = _get_vendor_roots()
     if not roots:
         return {'path': '', 'rel': ''}
 
-    for root in roots:
-        full_path = os.path.join(root, path)
-        if os.path.isfile(full_path):
-            stat = os.stat(full_path)
-            return {
-                'path': full_path,
-                'rel': path,
-                'stat': list(stat),
-            }
+    parts = path.split('/', 1)
+    if len(parts) < 2:
+        return {'path': '', 'rel': ''}
+
+    first_part = parts[0]
+    file_name = parts[1]
+
+    # Handle special directories: _states, _modules, etc.
+    special_dirs = {'_states', '_modules', '_grains', '_renderers', '_returners',
+                    '_runners', '_output', '_utils', '_pillar', '_engines', '_proxy', '_beacons'}
+
+    if first_part in special_dirs:
+        # Format: _states/incus.py -> search in all formulas
+        module_type = first_part
+
+        # Try to find the file in any formula
+        for root in roots:
+            full_path = os.path.join(root, module_type, file_name)
+            if os.path.isfile(full_path):
+                stat = os.stat(full_path)
+                return {
+                    'path': full_path,
+                    'rel': path,
+                    'stat': tuple(stat),
+                    'back': 'bundlefs',
+                }
+    else:
+        # Standard formula file lookup: formula_name/file
+        formula_name = first_part
+        file_path = file_name
+
+        for root in roots:
+            if Path(root).name == formula_name:
+                full_path = os.path.join(root, file_path)
+                if os.path.isfile(full_path):
+                    stat = os.stat(full_path)
+                    return {
+                        'path': full_path,
+                        'rel': path,
+                        'stat': tuple(stat),
+                        'back': 'bundlefs',
+                    }
 
     return {'path': '', 'rel': ''}
 
@@ -152,17 +188,37 @@ def find_file(path, saltenv="base", **kwargs):
 def file_list(load):
     '''
     Return list of all files in the fileserver.
-    Called by cp.list_master.
+
+    Special handling:
+    - vendor/formula/_states/incus.py -> _states/incus.py (for Salt auto-sync)
+    - vendor/formula/init.sls -> formula/init.sls (normal files)
     '''
     result = []
     roots = _get_vendor_roots()
 
+    # Special directories that should be exposed at root level for Salt auto-sync
+    special_dirs = {'_states', '_modules', '_grains', '_renderers', '_returners',
+                    '_runners', '_output', '_utils', '_pillar', '_engines', '_proxy', '_beacons'}
+
     for root in roots:
+        formula_name = Path(root).name
         for dirpath, _, filenames in os.walk(root):
+            dir_rel = os.path.relpath(dirpath, root)
+
+            # Check if we're in a special directory
+            first_dir = dir_rel.split('/')[0] if dir_rel != '.' else None
+            is_special = first_dir in special_dirs
+
             for filename in filenames:
                 full = os.path.join(dirpath, filename)
                 rel = os.path.relpath(full, root)
-                result.append(rel)
+
+                if is_special:
+                    # Expose at root level: _states/incus.py
+                    result.append(f"{first_dir}/{filename}")
+                else:
+                    # Regular files with formula prefix: formula/init.sls
+                    result.append(f"{formula_name}/{rel}")
 
     return result
 
@@ -221,21 +277,35 @@ def file_hash(load, fnd):
 # ---------------------------------------------------------
 def serve_file(load, fnd):
     '''
-    Return the contents of a file.
+    Return a chunk from a file based on the data received.
+    Salt reads files in chunks for efficiency.
     '''
+    ret = {'data': '', 'dest': ''}
+
     if not fnd or 'path' not in fnd or not fnd['path']:
-        return {'data': ''}
+        return ret
 
     path = fnd['path']
     if not os.path.isfile(path):
-        return {'data': ''}
+        return ret
+
+    ret['dest'] = fnd.get('rel', '')
 
     try:
-        with open(path, 'rb') as f:
-            return {'data': f.read()}
+        # Get file buffer size from opts (default 262144 bytes = 256KB)
+        buffer_size = __opts__.get('file_buffer_size', 262144) if '__opts__' in globals() else 262144
+
+        # Get starting position (loc) from load
+        loc = load.get('loc', 0)
+
+        with open(path, 'rb') as fp:
+            fp.seek(loc)
+            ret['data'] = fp.read(buffer_size)
+
     except Exception as e:
         log.error(f"bundlefs: failed to read {path}: {e}")
-        return {'data': ''}
+
+    return ret
 
 
 # ---------------------------------------------------------

@@ -146,7 +146,9 @@ def module_dirs(opts: Dict[str, Any] = None) -> List[str]:
 
 def states_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _states directories in vendor formulas."""
-    return list(_get_module_dirs("states"))
+    result = list(_get_module_dirs("states"))
+    log.debug(f"SaltBundle: states_dirs() called, returning {len(result)} paths: {result}")
+    return result
 
 
 def grains_dirs(opts: Dict[str, Any] = None) -> List[str]:
