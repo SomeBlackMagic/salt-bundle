@@ -92,7 +92,7 @@ def _get_vendor_roots() -> List[str]:
 
     if roots:
         formula_names = [Path(r).name for r in roots]
-        log.info(f"bundlefs: discovered formulas: {', '.join(formula_names)}")
+        log.debug(f"bundlefs: discovered formulas: {', '.join(formula_names)}")
 
     _CACHE['vendor_roots'] = roots
     return roots
@@ -193,7 +193,7 @@ def file_list(load):
     - vendor/formula/_states/incus.py -> _states/incus.py (for Salt auto-sync)
     - vendor/formula/init.sls -> formula/init.sls (normal files)
     '''
-    result = []
+    result = set()
     roots = _get_vendor_roots()
 
     # Special directories that should be exposed at root level for Salt auto-sync
@@ -215,12 +215,13 @@ def file_list(load):
 
                 if is_special:
                     # Expose at root level: _states/incus.py
-                    result.append(f"{first_dir}/{filename}")
+                    # Use the full relative path from special dir
+                    result.add(f"{first_dir}/{os.path.relpath(full, os.path.join(root, first_dir))}")
                 else:
                     # Regular files with formula prefix: formula/init.sls
-                    result.append(f"{formula_name}/{rel}")
+                    result.add(f"{formula_name}/{rel}")
 
-    return result
+    return sorted(result)
 
 
 # ---------------------------------------------------------
