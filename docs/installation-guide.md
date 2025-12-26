@@ -29,7 +29,7 @@ mkdir my-infrastructure
 cd my-infrastructure
 
 # Initialize project configuration
-salt-bundle init --project
+salt-bundle project init
 ```
 
 You'll be prompted for:
@@ -76,17 +76,17 @@ Add repositories to your user configuration (`~/.config/salt-bundle/config.yaml`
 
 ```bash
 # Add public repository
-salt-bundle add-repo \
+salt-bundle repo add \
   --name saltstack \
   --url https://salt-formulas.saltstack.com/
 
 # Add private repository
-salt-bundle add-repo \
+salt-bundle repo add \
   --name company \
   --url https://formulas.company.com/
 
 # Add local repository
-salt-bundle add-repo \
+salt-bundle repo add \
   --name local \
   --url file:///srv/salt-repo/
 ```
@@ -183,7 +183,7 @@ dependencies:
 
 ```bash
 cd my-infrastructure
-salt-bundle install
+salt-bundle project update
 ```
 
 **What happens:**
@@ -252,10 +252,10 @@ When `.salt-dependencies.lock` exists:
 
 ```bash
 # Install exact versions from lock file
-salt-bundle install
+salt-bundle project install
 
 # Or explicitly
-salt-bundle vendor
+salt-bundle project vendor
 ```
 
 This installs exactly the versions in the lock file without resolving.
@@ -266,13 +266,13 @@ Update to latest compatible versions:
 
 ```bash
 # Update all dependencies
-salt-bundle install --update-lock
+salt-bundle project update
 
 # Check what would be updated (planned feature)
-# salt-bundle update --dry-run
+# salt-bundle project update --dry-run
 
 # Update single dependency (planned feature)
-# salt-bundle update --dependency nginx
+# salt-bundle project update --dependency nginx
 ```
 
 ### Ignore Lock File
@@ -280,7 +280,8 @@ salt-bundle install --update-lock
 Resolve from scratch (not recommended for production):
 
 ```bash
-salt-bundle install --no-lock
+# Note: project update always resolves dependencies
+salt-bundle project update
 ```
 
 ## Salt Integration
@@ -327,7 +328,7 @@ salt-call config.get file_roots
 
 - `.saltbundle.yaml` must exist in current directory or parent directories
 - `vendor_dir` must be specified in config (defaults to `vendor`)
-- Formulas must be installed via `salt-bundle install` or `salt-bundle vendor`
+- Formulas must be installed via `salt-bundle project install` or `salt-bundle project vendor`
 
 **Verification:**
 
@@ -466,20 +467,20 @@ salt '*' state.apply nginx
 # 1. Start new project
 mkdir my-project
 cd my-project
-salt-bundle init --project
+salt-bundle project init
 
 # 2. Add repositories
-salt-bundle add-repo --name main --url https://formulas.example.com/
+salt-bundle repo add --name main --url https://formulas.example.com/
 
 # 3. Add dependencies
-cat >> .saltbundle.yaml << EOF
+cat >> .salt-dependencies.yaml << EOF
 dependencies:
   nginx: "^2.0"
   mysql: "^5.7"
 EOF
 
 # 4. Install
-salt-bundle install
+salt-bundle project update
 
 # 5. Test
 ./salt.sh state.show_sls nginx
@@ -497,10 +498,10 @@ git clone https://github.com/company/infrastructure.git
 cd infrastructure
 
 # 2. Install dependencies from lock file
-salt-bundle vendor
+salt-bundle project vendor
 
 # 3. Verify integrity
-salt-bundle verify
+salt-bundle formula verify
 
 # 4. Apply states
 ./salt.sh state.apply
@@ -513,7 +514,7 @@ salt-bundle verify
 cat .salt-dependencies.lock
 
 # 2. Update dependencies
-salt-bundle install --update-lock
+salt-bundle project update
 
 # 3. Test new versions
 ./salt.sh state.apply test=True
@@ -532,7 +533,7 @@ cat >> .saltbundle.yaml << EOF
 EOF
 
 # 2. Install
-salt-bundle install
+salt-bundle project update
 
 # 3. Test
 ./salt.sh state.show_sls redis
@@ -560,7 +561,7 @@ git commit -m "Add redis dependency"
 Check that all dependencies are correctly installed:
 
 ```bash
-salt-bundle verify
+salt-bundle formula verify
 ```
 
 **Output:**
@@ -629,12 +630,12 @@ rm -rf ~/.cache/salt-bundle/index/
 
 **Problem:**
 ```
-Error: .saltbundle.yaml not found. Run 'salt-bundle init --project' first.
+Error: .salt-dependencies.yaml not found. Run 'salt-bundle project init' first.
 ```
 
 **Solution:**
 ```bash
-salt-bundle init --project
+salt-bundle project init
 ```
 
 ### Error: No repositories configured
@@ -646,7 +647,7 @@ Warning: No repositories configured
 
 **Solution:** Add at least one repository:
 ```bash
-salt-bundle add-repo --name main --url https://formulas.example.com/
+salt-bundle repo add --name main --url https://formulas.example.com/
 ```
 
 Or add to `.saltbundle.yaml`:
@@ -666,7 +667,7 @@ Available repositories: saltstack, company
 
 **Solution:** Add the repository:
 ```bash
-salt-bundle add-repo --name main --url https://repo.example.com/
+salt-bundle repo add --name main --url https://repo.example.com/
 ```
 
 Or remove repository prefix from dependency:
@@ -698,7 +699,7 @@ nginx: "^1.0"  # Instead of ^2.0
 
 3. Check repository URL:
 ```bash
-salt-bundle add-repo --name main --url https://correct-url.example.com/
+salt-bundle repo add --name main --url https://correct-url.example.com/
 ```
 
 ### Error: Digest mismatch
@@ -713,14 +714,14 @@ Error: Digest mismatch for nginx-2.1.5.tgz
 1. Clear cache and retry:
 ```bash
 rm -rf ~/.cache/salt-bundle/packages/
-salt-bundle install
+salt-bundle project update
 ```
 
 2. Check repository integrity:
 ```bash
 # Re-generate index on repository server
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 ```
 
 ### Error: Network timeout
@@ -739,7 +740,7 @@ curl -I https://repo.example.com/index.yaml
 
 2. Use local repository:
 ```bash
-salt-bundle add-repo --name local --url file:///srv/salt-repo/
+salt-bundle repo add --name local --url file:///srv/salt-repo/
 ```
 
 ### Vendor directory not found

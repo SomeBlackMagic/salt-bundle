@@ -52,7 +52,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          salt-bundle release \
+          salt-bundle repo release \
             --formulas-dir . \
             --single \
             --provider github
@@ -100,7 +100,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          salt-bundle release \
+          salt-bundle repo release \
             --formulas-dir ./formulas \
             --provider github
 
@@ -168,7 +168,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          salt-bundle release \
+          salt-bundle repo release \
             --formulas-dir formulas/${{ matrix.formula }} \
             --single \
             --provider github
@@ -216,7 +216,7 @@ jobs:
           EOF
 
       - name: Test Pack
-        run: salt-bundle pack --output-dir /tmp
+        run: salt-bundle formula pack --output-dir /tmp
 
       - name: Test Salt Syntax
         run: |
@@ -243,7 +243,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          salt-bundle release \
+          salt-bundle repo release \
             --formulas-dir . \
             --single \
             --provider github
@@ -276,15 +276,15 @@ jobs:
 
       - name: Add Repository
         run: |
-          salt-bundle add-repo \
+          salt-bundle repo add \
             --name main \
             --url https://yourorg.github.io/salt-formulas/
 
       - name: Install Dependencies
-        run: salt-bundle install
+        run: salt-bundle project install
 
       - name: Verify Installation
-        run: salt-bundle verify
+        run: salt-bundle formula verify
 
       - name: Test States
         run: |
@@ -313,7 +313,7 @@ test:
   image: python:${PYTHON_VERSION}
   script:
     - pip install salt-bundle salt
-    - salt-bundle pack --output-dir /tmp
+    - salt-bundle formula pack --output-dir /tmp
     - salt-call --local --file-root=. state.show_sls $(basename $(pwd))
   only:
     changes:
@@ -326,7 +326,7 @@ release:
   script:
     - pip install salt-bundle
     - |
-      salt-bundle release \
+      salt-bundle repo release \
         --formulas-dir . \
         --single \
         --provider local \
@@ -369,7 +369,7 @@ stages:
   script:
     - pip install salt-bundle
     - |
-      salt-bundle release \
+      salt-bundle repo release \
         --formulas-dir formulas/${FORMULA_NAME} \
         --single \
         --provider local \
@@ -428,12 +428,12 @@ test:
   before_script:
     - pip install salt-bundle salt
     - |
-      salt-bundle add-repo \
+      salt-bundle repo add \
         --name main \
         --url https://formulas.example.com/
   script:
-    - salt-bundle install
-    - salt-bundle verify
+    - salt-bundle project install
+    - salt-bundle formula verify
     - |
       salt-call --local \
         --file-root=salt:vendor \
@@ -471,7 +471,7 @@ pipeline {
             steps {
                 sh '''
                     . venv/bin/activate
-                    salt-bundle pack --output-dir /tmp
+                    salt-bundle formula pack --output-dir /tmp
                 '''
             }
         }
@@ -483,7 +483,7 @@ pipeline {
             steps {
                 sh '''
                     . venv/bin/activate
-                    salt-bundle release \
+                    salt-bundle repo release \
                         --formulas-dir . \
                         --single \
                         --provider local \
@@ -525,10 +525,10 @@ pipeline {
             steps {
                 sh '''
                     . venv/bin/activate
-                    salt-bundle add-repo \
+                    salt-bundle repo add \
                         --name main \
                         --url https://formulas.example.com/
-                    salt-bundle install
+                    salt-bundle project install
                 '''
             }
         }
@@ -537,7 +537,7 @@ pipeline {
             steps {
                 sh '''
                     . venv/bin/activate
-                    salt-bundle verify
+                    salt-bundle formula verify
                 '''
             }
         }
@@ -659,7 +659,7 @@ jobs:
         run: pip install salt-bundle
       - name: Dry Run Release
         run: |
-          salt-bundle release \
+          salt-bundle repo release \
             --formulas-dir . \
             --single \
             --provider local \
@@ -697,7 +697,7 @@ strategy:
 steps:
   - name: Release ${{ matrix.formula }}
     run: |
-      salt-bundle release \
+      salt-bundle repo release \
         --formulas-dir formulas/${{ matrix.formula }} \
         --single \
         --provider github
@@ -740,9 +740,9 @@ env:
 **Solution:** Increase timeout and add retries:
 
 ```bash
-salt-bundle install --timeout 300 || \
-salt-bundle install --timeout 300 || \
-salt-bundle install --timeout 300
+salt-bundle project install --timeout 300 || \
+salt-bundle project install --timeout 300 || \
+salt-bundle project install --timeout 300
 ```
 
 ## Next Steps

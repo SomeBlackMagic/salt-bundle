@@ -368,7 +368,7 @@ Check your configuration is valid:
 
 ```bash
 # Try to pack (validates metadata)
-salt-bundle pack
+salt-bundle formula pack
 
 # Or use Python
 python3 << 'EOF'

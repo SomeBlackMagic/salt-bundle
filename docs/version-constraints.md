@@ -296,13 +296,10 @@ When `.salt-dependencies.lock` exists:
 
 ```bash
 # Uses lock file (exact versions)
-salt-bundle install
+salt-bundle project install
 
-# Ignores lock file (re-resolves)
-salt-bundle install --no-lock
-
-# Updates lock file with new versions
-salt-bundle install --update-lock
+# Re-resolves dependencies (creates/updates lock file)
+salt-bundle project update
 ```
 
 ### Conflict Resolution
@@ -381,11 +378,11 @@ dependencies:
 **Test before updating:**
 
 ```bash
-# Test with latest versions
-salt-bundle install --update-lock --dry-run
+# Update to latest compatible versions
+salt-bundle project update
 
-# If safe, update
-salt-bundle install --update-lock
+# Test with latest versions (planned feature)
+# salt-bundle project update --dry-run
 
 # Test changes
 ./salt.sh state.apply test=True
@@ -480,17 +477,17 @@ dependencies:
 # Create test project
 mkdir test-versions
 cd test-versions
-salt-bundle init --project
+salt-bundle project init
 
 # Test constraint
-cat > .saltbundle.yaml << EOF
+cat > .salt-dependencies.yaml << EOF
 project: test
 dependencies:
   nginx: "^2.0.0"
 EOF
 
 # See what resolves
-salt-bundle install
+salt-bundle project update
 
 # Check locked version
 cat .salt-dependencies.lock

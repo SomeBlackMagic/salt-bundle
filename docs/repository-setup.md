@@ -35,7 +35,7 @@ cp /path/to/formula-1.0.0.tgz .
 cp /path/to/another-formula-2.0.0.tgz .
 
 # 3. Generate index
-salt-bundle index
+salt-bundle repo index
 
 # This creates index.yaml
 ```
@@ -55,7 +55,7 @@ salt-bundle index
 
 ```bash
 # Add repository
-salt-bundle add-repo --name local --url file:///srv/salt-repo/
+salt-bundle repo add --name local --url file:///srv/salt-repo/
 
 # Or in project .saltbundle.yaml
 repositories:
@@ -69,7 +69,7 @@ repositories:
 # After adding new packages
 cd /srv/salt-repo
 cp /path/to/new-formula-3.0.0.tgz .
-salt-bundle index
+salt-bundle repo index
 ```
 
 ## HTTP Repository
@@ -149,7 +149,7 @@ sudo certbot --nginx -d salt-formulas.example.com
 
 ```bash
 # Add repository
-salt-bundle add-repo --name prod --url https://salt-formulas.example.com/
+salt-bundle repo add --name prod --url https://salt-formulas.example.com/
 
 # Or in project
 repositories:
@@ -162,7 +162,7 @@ repositories:
 When generating index, specify base URL:
 
 ```bash
-salt-bundle index --base-url https://salt-formulas.example.com/
+salt-bundle repo index --base-url https://salt-formulas.example.com/
 ```
 
 This creates absolute URLs in `index.yaml`:
@@ -196,7 +196,7 @@ export GITHUB_REPOSITORY=yourorg/salt-formulas
 
 ```bash
 cd my-formula
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --single \
   --provider github
@@ -216,7 +216,7 @@ formulas/
   └── redis/
 
 cd formulas
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider github
 ```
@@ -234,7 +234,7 @@ salt-bundle release \
 https://yourorg.github.io/salt-formulas/
 
 # Add to project:
-salt-bundle add-repo \
+salt-bundle repo add \
   --name github \
   --url https://yourorg.github.io/salt-formulas/
 ```
@@ -281,7 +281,7 @@ repo/
 ```bash
 # Generate with subdirectories
 cd repo
-salt-bundle index --base-url https://example.com/repo/
+salt-bundle repo index --base-url https://example.com/repo/
 
 # index.yaml will have correct paths:
 # url: nginx/nginx-2.0.0.tgz
@@ -331,14 +331,14 @@ packages:
 ```bash
 # 1. Pack formula
 cd /path/to/formula
-salt-bundle pack --output-dir /srv/salt-repo
+salt-bundle formula pack --output-dir /srv/salt-repo
 
 # 2. Update index
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 
 # If using base URL:
-salt-bundle index --base-url https://example.com/repo/
+salt-bundle repo index --base-url https://example.com/repo/
 ```
 
 ### Updating Formula
@@ -348,11 +348,11 @@ salt-bundle index --base-url https://example.com/repo/
 version: 1.1.0
 
 # 2. Pack new version
-salt-bundle pack --output-dir /srv/salt-repo
+salt-bundle formula pack --output-dir /srv/salt-repo
 
 # 3. Update index
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 ```
 
 ### Removing Old Versions
@@ -364,16 +364,16 @@ cd /srv/salt-repo
 rm nginx-1.0.0.tgz
 
 # Regenerate index
-salt-bundle index
+salt-bundle repo index
 ```
 
 ### Automated Release
 
-**Use `salt-bundle release` command:**
+**Use `salt-bundle repo release` command:**
 
 ```bash
 # Local repository
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir ./formulas \
   --provider local \
   --pkg-storage-dir /srv/salt-repo
@@ -381,7 +381,7 @@ salt-bundle release \
 # GitHub repository
 export GITHUB_TOKEN=ghp_xxx
 export GITHUB_REPOSITORY=org/repo
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir ./formulas \
   --provider github
 ```
@@ -481,7 +481,7 @@ sudo htpasswd -c /etc/nginx/.htpasswd username
 
 ```bash
 # In projects, use URL with credentials
-salt-bundle add-repo \
+salt-bundle repo add \
   --name secure \
   --url https://username:password@salt-formulas.example.com/
 ```
@@ -505,7 +505,7 @@ aws s3 sync /srv/salt-repo/ s3://my-bucket/salt-repo/
 aws cloudfront create-invalidation --distribution-id XXX --paths "/*"
 
 # Use CDN URL
-salt-bundle add-repo \
+salt-bundle repo add \
   --name cdn \
   --url https://cdn.example.com/salt-repo/
 ```
@@ -593,7 +593,7 @@ curl -I https://salt-formulas.example.com/index.yaml
 
 # Regenerate if needed
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 ```
 
 ### Digest Mismatch
@@ -605,7 +605,7 @@ salt-bundle index
 ```bash
 # Regenerate index with correct checksums
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 ```
 
 ### Package Not Found

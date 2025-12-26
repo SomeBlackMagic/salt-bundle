@@ -59,7 +59,7 @@ runs:
       run: |
         set -e
 
-        CMD="salt-bundle release \
+        CMD="salt-bundle repo release \
           --provider github \
           --formulas-dir '${{ inputs.formulas-dir }}' \
           --index-branch '${{ inputs.index-branch }}'"
@@ -78,7 +78,7 @@ runs:
 
         echo "cmd=$CMD" >> "$GITHUB_OUTPUT"
 
-    - name: Run salt-bundle release
+    - name: Run salt-bundle repo release
       shell: bash
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}

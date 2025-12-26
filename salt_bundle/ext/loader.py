@@ -1,5 +1,4 @@
 import logging
-import shutil
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from functools import lru_cache
@@ -147,7 +146,7 @@ def module_dirs(opts: Dict[str, Any] = None) -> List[str]:
 def states_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _states directories in vendor formulas."""
     result = list(_get_module_dirs("states"))
-    log.debug(f"SaltBundle: states_dirs() called, returning {len(result)} paths: {result}")
+    # log.debug(f"SaltBundle: states_dirs() called, returning {len(result)} paths: {result}")
     return result
 
 
@@ -209,7 +208,7 @@ def fileserver_dirs(opts: Dict[str, Any] = None) -> List[str]:
     bundlefs_path = Path(__file__).parent / "fileserver"
     if bundlefs_path.exists():
         paths.append(str(bundlefs_path.absolute()))
-        log.debug(f"SaltBundle: added bundlefs fileserver from {bundlefs_path}")
+        #log.debug(f"SaltBundle: added bundlefs fileserver from {bundlefs_path}")
 
     return paths
 

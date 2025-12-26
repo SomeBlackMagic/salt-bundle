@@ -53,19 +53,19 @@ Salt Bundle provides:
 ```bash
 # Initialize formula metadata
 cd my-formula
-salt-bundle init --formula
+salt-bundle formula init
 
 # Edit .saltbundle.yaml with your metadata
 
 # Pack the formula
-salt-bundle pack
+salt-bundle formula pack
 # Creates: my-formula-1.0.0.tgz
 
 # Generate repository index
 mkdir -p /srv/salt-repo
 cp my-formula-1.0.0.tgz /srv/salt-repo/
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 # Creates: index.yaml
 ```
 
@@ -75,17 +75,17 @@ salt-bundle index
 # Initialize project
 mkdir my-project
 cd my-project
-salt-bundle init --project
+salt-bundle project init
 
 # Add repository (global config)
-salt-bundle add-repo --name main --url https://example.com/salt-repo/
+salt-bundle repo add --name main --url https://example.com/salt-repo/
 
-# Edit .saltbundle.yaml to add dependencies
+# Edit .salt-dependencies.yaml to add dependencies
 # dependencies:
 #   my-formula: "^1.0.0"
 
 # Install dependencies
-salt-bundle install
+salt-bundle project install
 # Installs to: vendor/my-formula/
 
 # Use in Salt
@@ -259,26 +259,26 @@ formulas/
 
 # Release all formulas
 cd formulas
-salt-bundle release --formulas-dir . --provider local --pkg-storage-dir ../repo
+salt-bundle repo release --formulas-dir . --provider local --pkg-storage-dir ../repo
 ```
 
 ### Single Formula Repository
 
 ```bash
 # In formula repository
-salt-bundle release --formulas-dir . --single --provider github
+salt-bundle repo release --formulas-dir . --single --provider github
 
 # With GitHub:
 export GITHUB_TOKEN=ghp_xxx
 export GITHUB_REPOSITORY=owner/repo
-salt-bundle release --formulas-dir . --single --provider github
+salt-bundle repo release --formulas-dir . --single --provider github
 ```
 
 ### Private Repository
 
 ```bash
 # Add private repository
-salt-bundle add-repo --name private --url https://private.example.com/repo/
+salt-bundle repo add --name private --url https://private.example.com/repo/
 
 # Use in project
 dependencies:

@@ -24,7 +24,7 @@ This guide explains how to create, package, and publish Salt formulas using Salt
 
 ```bash
 cd my-formula
-salt-bundle init --formula
+salt-bundle formula init
 ```
 
 You'll be prompted for:
@@ -166,7 +166,7 @@ temp/
 
 ```bash
 cd my-formula
-salt-bundle pack
+salt-bundle formula pack
 
 # Output: my-formula-1.0.0.tgz
 ```
@@ -174,7 +174,7 @@ salt-bundle pack
 Specify output directory:
 
 ```bash
-salt-bundle pack --output-dir /path/to/output
+salt-bundle formula pack --output-dir /path/to/output
 ```
 
 ### Verify Package
@@ -192,7 +192,7 @@ tar -tzf my-formula-1.0.0.tgz
 version: 1.0.1
 
 # 2. Pack new version
-salt-bundle pack
+salt-bundle formula pack
 
 # Output: my-formula-1.0.1.tgz
 ```
@@ -212,11 +212,11 @@ cp my-formula-1.0.0.tgz /srv/salt-repo/
 
 # 3. Generate index
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 
 # 4. Serve repository
 # Option A: File system
-salt-bundle add-repo --name local --url file:///srv/salt-repo/
+salt-bundle repo add --name local --url file:///srv/salt-repo/
 
 # Option B: HTTP server
 cd /srv/salt-repo
@@ -237,14 +237,14 @@ export GITHUB_REPOSITORY=yourorg/my-formula
 
 # Release single formula
 cd my-formula
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --single \
   --provider github
 
 # Release multiple formulas
 cd formulas/
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider github
 ```
@@ -262,7 +262,7 @@ Best for: Production, CDN, enterprise
 
 ```bash
 # 1. Pack formulas
-salt-bundle pack
+salt-bundle formula pack
 
 # 2. Upload to web server
 scp my-formula-1.0.0.tgz user@server:/var/www/salt-repo/
@@ -270,17 +270,17 @@ scp my-formula-1.0.0.tgz user@server:/var/www/salt-repo/
 # 3. Generate index on server
 ssh user@server
 cd /var/www/salt-repo
-salt-bundle index --base-url https://salt-repo.example.com/
+salt-bundle repo index --base-url https://salt-repo.example.com/
 
 # Users add repository:
-salt-bundle add-repo --name prod --url https://salt-repo.example.com/
+salt-bundle repo add --name prod --url https://salt-repo.example.com/
 ```
 
 ## Automated Publishing
 
 ### Release Command
 
-The `salt-bundle release` command automates:
+The `salt-bundle repo release` command automates:
 
 1. Discovery of formulas
 2. Version checking (skip if already published)
@@ -292,7 +292,7 @@ The `salt-bundle release` command automates:
 
 ```bash
 cd my-formula
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --single \
   --provider local \
@@ -308,7 +308,7 @@ formulas/
   └── redis/
 
 cd formulas
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider local \
   --pkg-storage-dir /srv/salt-repo
@@ -348,7 +348,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          salt-bundle release \
+          salt-bundle repo release \
             --formulas-dir . \
             --single \
             --provider github
@@ -367,7 +367,7 @@ release:
   script:
     - pip install salt-bundle
     - |
-      salt-bundle release \
+      salt-bundle repo release \
         --formulas-dir . \
         --single \
         --provider local \
@@ -439,23 +439,23 @@ dependencies:
 
 ```bash
 # 1. Test packaging
-salt-bundle pack
+salt-bundle formula pack
 
 # 2. Test installation in clean environment
 mkdir test-project
 cd test-project
-salt-bundle init --project
+salt-bundle project init
 
 # Add local repository
-salt-bundle add-repo --name test --url file:///path/to/repo
+salt-bundle repo add --name test --url file:///path/to/repo
 
 # Add dependency
-# .saltbundle.yaml:
+# .salt-dependencies.yaml:
 # dependencies:
 #   my-formula: "1.0.0"
 
 # Install
-salt-bundle install
+salt-bundle project update
 
 # 3. Test with Salt
 salt-call --local \

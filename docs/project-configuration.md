@@ -379,7 +379,7 @@ dependencies:
 
 ### .salt-dependencies.lock
 
-After running `salt-bundle install`, a lock file is generated:
+After running `salt-bundle project install`, a lock file is generated:
 
 ```yaml
 dependencies:
@@ -425,7 +425,7 @@ vendor/
 
 ```bash
 # Try to install (validates config)
-salt-bundle install
+salt-bundle project install
 
 # Or use Python
 python3 << 'EOF'
@@ -562,10 +562,10 @@ dependencies:
 ```bash
 # Install in clean state
 rm -rf vendor/
-salt-bundle install
+salt-bundle project install
 
 # Verify installation
-salt-bundle verify
+salt-bundle formula verify
 
 # Test with Salt
 salt-call --local --file-root=vendor state.show_sls nginx
@@ -606,7 +606,7 @@ git rm -f formulas/nginx
 rm -rf .git/modules/formulas/nginx
 
 # Create .salt-dependencies.yaml
-salt-bundle init --project
+salt-bundle project init
 
 # Add dependencies
 cat >> .salt-dependencies.yaml << EOF
@@ -615,7 +615,7 @@ dependencies:
 EOF
 
 # Install
-salt-bundle install
+salt-bundle project install
 ```
 
 ## Environment-Specific Configuration
@@ -631,7 +631,7 @@ salt-bundle install
 **Install specific environment:**
 ```bash
 cp .salt-dependencies.prod.yaml .salt-dependencies.yaml
-salt-bundle install
+salt-bundle project install
 ```
 
 ### Option 2: Override with Repository Priority

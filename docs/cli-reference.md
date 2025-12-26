@@ -7,7 +7,7 @@ Complete command-line interface reference for Salt Bundle.
 Available for all commands:
 
 ```bash
-salt-bundle [GLOBAL_OPTIONS] COMMAND [COMMAND_OPTIONS]
+salt-bundle [GLOBAL_OPTIONS] COMMAND [SUBCOMMAND] [OPTIONS]
 ```
 
 | Option                          | Description                                    |
@@ -16,58 +16,66 @@ salt-bundle [GLOBAL_OPTIONS] COMMAND [COMMAND_OPTIONS]
 | `--quiet`                       | Suppress output                                |
 | `--project-dir PATH`, `-C PATH` | Project directory (default: current directory) |
 | `--help`                        | Show help message                              |
+| `--version`                     | Show version                                   |
 
-## Commands
+## Command Structure
 
-### init
+Salt Bundle now uses a hierarchical command structure with three main groups:
 
-Initialize Salt Bundle configuration.
+- **`formula`** - Commands for managing Salt formulas
+- **`project`** - Commands for managing Salt projects and dependencies
+- **repo`** - Commands for managing formula repositories
+
+## Formula Commands
+
+Commands for creating, packaging, and managing Salt formulas.
+
+### formula init
+
+Initialize a new Salt formula configuration.
 
 ```bash
-salt-bundle init --project
-salt-bundle init --formula
+salt-bundle formula init [OPTIONS]
 ```
 
 **Options:**
 
-| Option      | Description                      |
-|-------------|----------------------------------|
-| `--project` | Initialize project configuration |
-| `--formula` | Initialize formula configuration |
-| `--force`   | Overwrite existing configuration |
+| Option    | Description                      |
+|-----------|----------------------------------|
+| `--force` | Overwrite existing configuration |
 
 **Examples:**
 
 ```bash
-# Initialize project
-mkdir my-project
-cd my-project
-salt-bundle init --project
-
-# Initialize formula
-mkdir my-formula
+# Initialize formula interactively
 cd my-formula
-salt-bundle init --formula
+salt-bundle formula init
 
 # Force overwrite existing config
-salt-bundle init --formula --force
+salt-bundle formula init --force
+
+# Initialize in specific directory
+salt-bundle formula init -C /path/to/formula
 ```
 
 **Creates:**
-- `.saltbundle.yaml` in current directory
+- `.saltbundle.yaml` with formula metadata
 
 **Interactive prompts:**
-- Project/Formula name
+- Formula name
 - Version
-- Description (formula only)
-- Salt compatibility (formula only)
+- Description
+- Salt min version (optional)
+- Salt max version (optional)
 
-### pack
+---
 
-Pack formula into tar.gz archive.
+### formula pack
+
+Package a Salt formula into a distributable tar.gz archive.
 
 ```bash
-salt-bundle pack [OPTIONS]
+salt-bundle formula pack [OPTIONS]
 ```
 
 **Options:**
@@ -81,37 +89,309 @@ salt-bundle pack [OPTIONS]
 ```bash
 # Pack formula in current directory
 cd my-formula
-salt-bundle pack
+salt-bundle formula pack
 
 # Pack to specific directory
-salt-bundle pack --output-dir /path/to/output
+salt-bundle formula pack --output-dir /path/to/output
 
 # Pack from different directory
-salt-bundle --project-dir /path/to/formula pack
+salt-bundle formula pack -C /path/to/formula
 ```
 
 **Output:**
-- `{name}-{version}.tgz` archive
+- `{name}-{version}.tar.gz` archive
 
 **Requirements:**
 - `.saltbundle.yaml` must exist
-- At least one `.sls` file must exist
 - Valid semver version
 - Valid package name
 
-### index
+---
 
-Generate or update repository index.
+### formula verify
+
+Verify integrity of installed formula dependencies.
 
 ```bash
-salt-bundle index [DIRECTORY] [OPTIONS]
+salt-bundle formula verify
+```
+
+**Examples:**
+
+```bash
+# Verify all dependencies
+salt-bundle formula verify
+
+# Verify in specific project directory
+salt-bundle formula verify -C /path/to/project
+```
+
+**Checks:**
+- All packages from lock file are installed
+- `.saltbundle.yaml` exists in each package
+- Package versions match lock file
+
+**Exit codes:**
+- `0` - All dependencies verified
+- `1` - Errors found
+
+---
+
+### formula sync
+
+Sync vendor formula modules to Salt's extension modules cache.
+
+```bash
+salt-bundle formula sync [OPTIONS]
+```
+
+**Options:**
+
+| Option              | Description                                           |
+|---------------------|-------------------------------------------------------|
+| `--cache-dir PATH` | Salt cache directory (auto-detected if not specified) |
+
+**Examples:**
+
+```bash
+# Auto-detect cache directory and sync
+salt-bundle formula sync
+
+# Specify custom cache directory
+salt-bundle formula sync --cache-dir /var/cache/salt/minion/extmods
+
+# Sync from different project directory
+salt-bundle formula sync -C /path/to/project
+```
+
+**Module types synchronized:**
+- modules, states, grains, pillar, returners, runners
+- output, utils, renderers, engines, proxy, beacons
+
+**Behavior:**
+- Copies custom modules from vendor formulas
+- Runs `salt-call --local saltutil.sync_all` automatically
+
+---
+
+## Project Commands
+
+Commands for managing Salt projects with formula dependencies.
+
+### project init
+
+Initialize a new Salt project with dependency management.
+
+```bash
+salt-bundle project init [OPTIONS]
+```
+
+**Options:**
+
+| Option    | Description                      |
+|-----------|----------------------------------|
+| `--force` | Overwrite existing configuration |
+
+**Examples:**
+
+```bash
+# Initialize project interactively
+mkdir my-project
+cd my-project
+salt-bundle project init
+
+# Force overwrite existing configuration
+salt-bundle project init --force
+
+# Initialize in specific directory
+salt-bundle project init -C /path/to/project
+```
+
+**Creates:**
+- `.salt-dependencies.yaml` with project configuration
+
+**Interactive prompts:**
+- Project name
+- Version
+
+**Next steps displayed:**
+1. Add repositories: `salt-bundle repo add`
+2. Add dependencies to `.salt-dependencies.yaml`
+3. Install dependencies: `salt-bundle project install`
+
+---
+
+### project install
+
+Install project dependencies from lock file.
+
+```bash
+salt-bundle project install
+```
+
+**Examples:**
+
+```bash
+# Install from lock file
+salt-bundle project install
+
+# Install in different directory
+salt-bundle project install -C /path/to/project
+```
+
+**Behavior:**
+- Reads `.salt-dependencies.lock` for exact versions
+- Downloads packages from configured repositories
+- Installs to vendor directory
+- Syncs Salt extensions automatically
+
+**Requirements:**
+- `.salt-dependencies.yaml` must exist
+- `.salt-dependencies.lock` must exist
+- At least one repository configured
+
+**Exit codes:**
+- `0` - Installation successful
+- `1` - Error occurred
+
+**Use cases:**
+- Production deployments
+- CI/CD pipelines
+- Reproducible installations
+
+---
+
+### project update
+
+Resolve dependencies and update lock file.
+
+```bash
+salt-bundle project update
+```
+
+**Examples:**
+
+```bash
+# Resolve and install all dependencies
+salt-bundle project update
+
+# Update in specific project directory
+salt-bundle project update -C /path/to/project
+```
+
+**Behavior:**
+1. Reads dependencies from `.salt-dependencies.yaml`
+2. Queries configured repositories for available versions
+3. Resolves version constraints
+4. Creates/updates `.salt-dependencies.lock`
+5. Downloads and installs packages
+6. Syncs Salt extensions
+
+**Dependency resolution:**
+- Searches all configured repositories (project + user)
+- Can specify repository: `repo/package` or search all: `package`
+- Resolves version constraints (e.g., `>=1.0.0`, `~1.2.0`)
+- Fails if any dependency cannot be resolved
+
+**Use cases:**
+- Adding new dependencies
+- Updating to newer versions
+- Initial project setup
+
+**Exit codes:**
+- `0` - Dependencies resolved and installed
+- `1` - Resolution or installation failed
+
+---
+
+### project vendor
+
+Install dependencies from lock file (reproducible deploy).
+
+```bash
+salt-bundle project vendor
+```
+
+**Examples:**
+
+```bash
+# Install from lock file
+salt-bundle project vendor
+
+# Install in specific project directory
+salt-bundle project vendor -C /path/to/project
+```
+
+**Behavior:**
+- Alias for `salt-bundle project install`
+- Only uses `.salt-dependencies.lock`
+- No dependency resolution
+
+**Use cases:**
+- Production deployments
+- CI/CD pipelines
+- Team collaboration
+- Ensuring consistent environments
+
+---
+
+## Repository Commands
+
+Commands for managing formula repositories.
+
+### repo add
+
+Add a formula repository to project or global configuration.
+
+```bash
+salt-bundle repo add --name NAME --url URL
+```
+
+**Options:**
+
+| Option        | Description                            |
+|---------------|----------------------------------------|
+| `--name NAME` | Repository name (unique identifier)    |
+| `--url URL`   | Repository URL (must contain index.yaml) |
+
+**Examples:**
+
+```bash
+# Add remote repository to project
+salt-bundle repo add --name official --url https://formulas.example.com/
+
+# Add local repository
+salt-bundle repo add --name local --url file:///opt/formulas/
+
+# Add to global configuration (no project found)
+cd /tmp
+salt-bundle repo add --name global --url https://repo.example.com/
+```
+
+**Repository types:**
+- HTTP/HTTPS: Remote repositories
+- File: Local directories (`file:///path/to/repo/`)
+- GitHub Pages: Static hosting
+
+**Behavior:**
+- If `.salt-dependencies.yaml` exists: adds to project
+- Otherwise: adds to global user config (`~/.salt-bundle/config.yaml`)
+
+---
+
+### repo index
+
+Generate or update repository index from formula packages.
+
+```bash
+salt-bundle repo index [DIRECTORY] [OPTIONS]
 ```
 
 **Arguments:**
 
 | Argument    | Description                                                    |
 |-------------|----------------------------------------------------------------|
-| `DIRECTORY` | Directory containing `.tgz` files (default: current directory) |
+| `DIRECTORY` | Directory containing `.tar.gz` files (default: current directory) |
 
 **Options:**
 
@@ -125,188 +405,36 @@ salt-bundle index [DIRECTORY] [OPTIONS]
 ```bash
 # Generate index in current directory
 cd /srv/salt-repo
-salt-bundle index
+salt-bundle repo index
 
 # Generate for specific directory
-salt-bundle index /path/to/repo
+salt-bundle repo index /path/to/repo
 
 # With base URL (absolute URLs)
-salt-bundle index --base-url https://formulas.example.com/
+salt-bundle repo index --base-url https://formulas.example.com/
 
 # Output to different directory
-salt-bundle index /srv/packages --output-dir /srv/repo
+salt-bundle repo index /srv/packages --output-dir /srv/repo
 ```
 
 **Output:**
 - `index.yaml` with all package versions
 
 **Behavior:**
-- Scans directory for `.tgz` files
+- Scans directory for `.tar.gz` files
 - Reads metadata from each archive
 - Calculates SHA256 digests
 - Merges with existing `index.yaml` (if present)
 - Sorts versions (newest first)
 
-### add-repo
+---
 
-Add repository to global user configuration.
-
-```bash
-salt-bundle add-repo --name NAME --url URL
-```
-
-**Options:**
-
-| Option        | Description                |
-|---------------|----------------------------|
-| `--name NAME` | Repository name (required) |
-| `--url URL`   | Repository URL (required)  |
-
-**Examples:**
-
-```bash
-# Add HTTPS repository
-salt-bundle add-repo \
-  --name prod \
-  --url https://salt-formulas.example.com/
-
-# Add local repository
-salt-bundle add-repo \
-  --name local \
-  --url file:///srv/salt-repo/
-
-# Add HTTP repository
-salt-bundle add-repo \
-  --name dev \
-  --url http://localhost:8080/
-```
-
-**Configuration file:**
-- `~/.config/salt-bundle/config.yaml`
-
-**Format:**
-
-```yaml
-repositories:
-  - name: prod
-    url: https://salt-formulas.example.com/
-  - name: local
-    url: file:///srv/salt-repo/
-```
-
-### install
-
-Install project dependencies.
-
-```bash
-salt-bundle install [OPTIONS]
-```
-
-**Options:**
-
-| Option          | Description                                      |
-|-----------------|--------------------------------------------------|
-| `--no-lock`     | Ignore lock file and re-resolve dependencies     |
-| `--update-lock` | Update lock file with latest compatible versions |
-
-**Examples:**
-
-```bash
-# Install from lock file (or create if missing)
-salt-bundle install
-
-# Ignore lock file, re-resolve dependencies
-salt-bundle install --no-lock
-
-# Update to latest compatible versions
-salt-bundle install --update-lock
-
-# Install in different directory
-salt-bundle --project-dir /path/to/project install
-```
-
-**Behavior:**
-
-1. **With lock file** (default):
-   - Installs exact versions from `.salt-dependencies.lock`
-   - No dependency resolution
-
-2. **Without lock file** or `--no-lock`:
-   - Reads `.saltbundle.yaml`
-   - Resolves dependencies
-   - Creates `.salt-dependencies.lock`
-
-3. **With `--update-lock`**:
-   - Re-resolves dependencies
-   - Updates `.salt-dependencies.lock`
-   - Installs new versions
-
-**Requirements:**
-- `.saltbundle.yaml` must exist
-- At least one repository configured
-
-**Output:**
-- Installs packages to `vendor/` directory
-- Creates/updates `.salt-dependencies.lock`
-
-### vendor
-
-Install dependencies from lock file (reproducible deploy).
-
-```bash
-salt-bundle vendor
-```
-
-**Examples:**
-
-```bash
-# Install from lock file
-salt-bundle vendor
-```
-
-**Behavior:**
-- Identical to `salt-bundle install` without options
-- Only uses `.salt-dependencies.lock`
-- No dependency resolution
-
-**Use case:**
-- Production deployments
-- CI/CD pipelines
-- Reproducible builds
-
-### verify
-
-Verify project dependencies integrity.
-
-```bash
-salt-bundle verify
-```
-
-**Examples:**
-
-```bash
-# Verify all dependencies
-salt-bundle verify
-
-# Verify in specific directory
-salt-bundle --project-dir /path/to/project verify
-```
-
-**Checks:**
-- All packages from lock file are installed
-- `.saltbundle.yaml` exists in each package
-- Package versions match lock file
-
-**Exit codes:**
-- `0` - All dependencies verified
-- `1` - Errors found
-
-### release
+### repo release
 
 Release formulas to repository (automated packaging and publishing).
 
 ```bash
-salt-bundle release --formulas-dir PATH --provider PROVIDER [OPTIONS]
+salt-bundle repo release --formulas-dir PATH --provider PROVIDER [OPTIONS]
 ```
 
 **Required Options:**
@@ -345,14 +473,14 @@ Requires environment variables:
 ```bash
 # Local provider - multiple formulas
 cd formulas/
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider local \
   --pkg-storage-dir /srv/salt-repo
 
 # Local provider - single formula
 cd my-formula
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --single \
   --provider local \
@@ -362,7 +490,7 @@ salt-bundle release \
 export GITHUB_TOKEN=ghp_xxxx
 export GITHUB_REPOSITORY=owner/repo
 cd formulas/
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider github
 
@@ -370,60 +498,193 @@ salt-bundle release \
 cd my-formula
 export GITHUB_TOKEN=ghp_xxxx
 export GITHUB_REPOSITORY=owner/repo
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --single \
   --provider github
 
 # Custom index branch
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider github \
   --index-branch main
 
 # Dry run mode
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider local \
   --pkg-storage-dir /tmp/test \
   --dry-run
 
 # Skip packaging (use existing .tgz)
-salt-bundle release \
+salt-bundle repo release \
   --formulas-dir . \
   --provider local \
   --pkg-storage-dir /srv/repo \
   --skip-packaging
 ```
 
-**Behavior:**
+**Workflow:**
 
-1. **Discovery**
-   - Scans `formulas-dir` for formulas
-   - `--single`: Treats directory as one formula
-   - Default: Scans subdirectories
+1. **Discovery** - Scans for formulas
+2. **Version Check** - Checks which versions are new
+3. **Packaging** - Packs new versions (unless `--skip-packaging`)
+4. **Publishing** - Uploads to provider
+5. **Index Update** - Updates `index.yaml`
 
-2. **Version Check**
-   - Loads existing repository index
-   - Checks which versions are new
-   - Skips already published versions
+---
 
-3. **Packaging** (unless `--skip-packaging`)
-   - Packs new formula versions
-   - Validates metadata
+## Configuration Files
 
-4. **Publishing**
-   - **Local**: Copies to `pkg-storage-dir`
-   - **GitHub**: Creates Release, uploads asset
+### Project: .salt-dependencies.yaml
 
-5. **Index Update**
-   - Updates `index.yaml`
-   - **Local**: Saves to `pkg-storage-dir`
-   - **GitHub**: Commits to `index-branch`
+Location: Project root
 
-**Output:**
-- Summary of released packages
-- Errors if any
+```yaml
+project: my-infrastructure
+version: 0.1.0
+vendor_dir: vendor
+
+repositories:
+  - name: main
+    url: https://salt-formulas.example.com/
+
+dependencies:
+  nginx: "^2.0.0"
+  mysql: "~5.7"
+  main/redis: ">=6.0,<7.0"
+```
+
+See [Project Configuration](project-configuration.md).
+
+---
+
+### Formula: .saltbundle.yaml
+
+Location: Formula root
+
+```yaml
+name: my-formula
+version: 1.0.0
+description: My Salt formula
+
+maintainers:
+  - name: Developer Name
+    email: dev@example.com
+
+salt:
+  min_version: "3006"
+  max_version: "3009"
+
+dependencies:
+  - name: common
+    version: "^1.0"
+```
+
+See [Formula Configuration](formula-configuration.md).
+
+---
+
+### Lock File: .salt-dependencies.lock
+
+Location: Project root (generated)
+
+```yaml
+dependencies:
+  package-name:
+    version: 1.2.3
+    repository: repo-name
+    url: https://example.com/package-1.2.3.tgz
+    digest: sha256:abc123...
+```
+
+---
+
+### User Config: ~/.salt-bundle/config.yaml
+
+Global user configuration.
+
+```yaml
+repositories:
+  - name: main
+    url: https://formulas.example.com/
+  - name: local
+    url: file:///srv/salt-repo/
+```
+
+---
+
+## Common Workflows
+
+### Publishing Workflow
+
+```bash
+# 1. Create/edit formula
+cd my-formula
+vim .saltbundle.yaml  # Update version
+
+# 2. Pack
+salt-bundle formula pack
+
+# 3. Copy to repository
+cp my-formula-1.0.0.tar.gz /srv/salt-repo/
+
+# 4. Update index
+cd /srv/salt-repo
+salt-bundle repo index
+```
+
+Or use `release` command:
+
+```bash
+cd my-formula
+salt-bundle repo release \
+  --formulas-dir . \
+  --single \
+  --provider local \
+  --pkg-storage-dir /srv/salt-repo
+```
+
+---
+
+### Installation Workflow
+
+```bash
+# 1. Create project
+mkdir my-project
+cd my-project
+salt-bundle project init
+
+# 2. Add repository
+salt-bundle repo add --name main --url https://formulas.example.com/
+
+# 3. Edit dependencies
+vim .salt-dependencies.yaml
+
+# 4. Update (resolve and install)
+salt-bundle project update
+
+# 5. Verify
+salt-bundle formula verify
+```
+
+---
+
+### Update Workflow
+
+```bash
+# 1. Update to latest versions
+salt-bundle project update
+
+# 2. Test
+./test.sh
+
+# 3. Commit if successful
+git add .salt-dependencies.lock
+git commit -m "Update dependencies"
+```
+
+---
 
 ## Exit Codes
 
@@ -431,6 +692,8 @@ salt-bundle release \
 |------|---------|
 | `0` | Success |
 | `1` | Error occurred |
+
+---
 
 ## Environment Variables
 
@@ -451,8 +714,10 @@ GitHub personal access token for `github` provider.
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
-salt-bundle release --provider github ...
+salt-bundle repo release --provider github ...
 ```
+
+---
 
 ### GITHUB_REPOSITORY
 
@@ -462,132 +727,17 @@ GitHub repository in format `owner/repo`.
 
 ```bash
 export GITHUB_REPOSITORY=myorg/salt-formulas
-salt-bundle release --provider github ...
+salt-bundle repo release --provider github ...
 ```
 
-## Configuration Files
-
-### Project: .saltbundle.yaml
-
-Location: Project root
-
-See [Project Configuration](project-configuration.md).
-
-### Formula: .saltbundle.yaml
-
-Location: Formula root
-
-See [Formula Configuration](formula-configuration.md).
-
-### Lock File: .salt-dependencies.lock
-
-Location: Project root (generated)
-
-Format:
-
-```yaml
-dependencies:
-  package-name:
-    version: 1.2.3
-    repository: repo-name
-    url: https://example.com/package-1.2.3.tgz
-    digest: sha256:abc123...
-```
-
-### User Config: ~/.config/salt-bundle/config.yaml
-
-Global user configuration.
-
-Format:
-
-```yaml
-repositories:
-  - name: main
-    url: https://formulas.example.com/
-  - name: local
-    url: file:///srv/salt-repo/
-
-allowed_repos: []  # Optional security constraint
-```
-
-### Repository Index: index.yaml
-
-Location: Repository root
-
-See [File Formats](file-formats.md).
-
-## Common Workflows
-
-### Publishing Workflow
-
-```bash
-# 1. Create/edit formula
-cd my-formula
-vim .saltbundle.yaml  # Update version
-
-# 2. Pack
-salt-bundle pack
-
-# 3. Copy to repository
-cp my-formula-1.0.0.tgz /srv/salt-repo/
-
-# 4. Update index
-cd /srv/salt-repo
-salt-bundle index
-```
-
-Or use `release` command:
-
-```bash
-cd my-formula
-salt-bundle release \
-  --formulas-dir . \
-  --single \
-  --provider local \
-  --pkg-storage-dir /srv/salt-repo
-```
-
-### Installation Workflow
-
-```bash
-# 1. Create project
-mkdir my-project
-cd my-project
-salt-bundle init --project
-
-# 2. Add repository
-salt-bundle add-repo --name main --url https://formulas.example.com/
-
-# 3. Edit dependencies
-vim .saltbundle.yaml
-
-# 4. Install
-salt-bundle install
-
-# 5. Verify
-salt-bundle verify
-```
-
-### Update Workflow
-
-```bash
-# 1. Update to latest versions
-salt-bundle install --update-lock
-
-# 2. Test
-./test.sh
-
-# 3. Commit if successful
-git add .salt-dependencies.lock
-git commit -m "Update dependencies"
-```
+---
 
 ## Debugging
 
 ### Enable Debug Mode
 
 ```bash
-salt-bundle --debug install
+salt-bundle --debug project install
 ```
 
 **Output includes:**
@@ -596,13 +746,17 @@ salt-bundle --debug install
 - Dependency resolution details
 - Stack traces on errors
 
+---
+
 ### Quiet Mode
 
 ```bash
-salt-bundle --quiet install
+salt-bundle --quiet project install
 ```
 
 Suppresses all output except errors.
+
+---
 
 ### Check Version
 
@@ -610,50 +764,37 @@ Suppresses all output except errors.
 salt-bundle --version
 ```
 
-## Tips and Tricks
+---
 
-### Batch Operations
+## Quick Reference
 
-```bash
-# Install for multiple projects
-for project in proj1 proj2 proj3; do
-    salt-bundle --project-dir "$project" install
-done
-
-# Update all projects
-for project in */; do
-    cd "$project"
-    salt-bundle install --update-lock
-    cd ..
-done
-```
-
-### Scripting
+### Formula Developer
 
 ```bash
-#!/bin/bash
-set -e
-
-# Exit on errors
-salt-bundle install || {
-    echo "Installation failed"
-    exit 1
-}
-
-# Continue with deployment
-echo "Deployment successful"
+salt-bundle formula init          # Initialize formula
+salt-bundle formula pack           # Package formula
+salt-bundle repo release ...       # Publish to repository
 ```
 
-### Check Repository
+### Project Developer
 
 ```bash
-# Download and view index
-curl https://formulas.example.com/index.yaml | less
-
-# Check specific package versions
-curl -s https://formulas.example.com/index.yaml | \
-  yq '.packages.nginx[].version'
+salt-bundle project init           # Initialize project
+salt-bundle repo add ...           # Add repository
+salt-bundle project update         # Resolve and install
+salt-bundle project install        # Install from lock
+salt-bundle formula verify         # Verify installation
+salt-bundle formula sync           # Sync to Salt cache
 ```
+
+### Repository Manager
+
+```bash
+salt-bundle repo index             # Generate index
+salt-bundle repo release ...       # Automated release
+```
+
+---
 
 ## Next Steps
 

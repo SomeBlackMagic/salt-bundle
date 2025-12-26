@@ -49,7 +49,7 @@
 #          # Release formulas using GitHub provider
 #          # index.yaml will be automatically committed and pushed to gh-pages branch
 #          # Packages will be uploaded as GitHub release assets
-#          salt-bundle release \
+#          salt-bundle repo release \
 #            --formulas-dir ./packages \
 #            --provider github \
 #            --index-branch gh-pages
