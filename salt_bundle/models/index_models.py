@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
 
-from .package_models import Maintainer
+from .package_models import Maintainer, PackageDependency
 
 
 class IndexEntry(BaseModel):
@@ -16,6 +16,7 @@ class IndexEntry(BaseModel):
     keywords: list[str] = Field(default_factory=list)
     maintainers: list[Maintainer] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)
+    dependencies: list[PackageDependency] = Field(default_factory=list)
 
 
 class Index(BaseModel):

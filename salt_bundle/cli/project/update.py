@@ -71,8 +71,22 @@ def update(ctx):
         # Resolve dependencies
         click.echo("Resolving dependencies...")
         lock = lockfile.LockFile()
+        
+        # Track pending dependencies: (package_key, version_constraint)
+        pending = list(proj_config.dependencies.items())
+        resolved_packages = {}  # name -> IndexEntry
 
-        for dep_key, dep_constraint in proj_config.dependencies.items():
+        # Fetch all indexes first to speed up
+        repo_indexes = {}
+        for repo in all_repos:
+            try:
+                repo_indexes[repo.name] = (repo, repository.fetch_index(repo.url))
+            except Exception as e:
+                click.echo(f"Warning: Failed to fetch from {repo.name}: {e}", err=True)
+
+        while pending:
+            dep_key, dep_constraint = pending.pop(0)
+            
             # Parse dependency format: "repo/package" or "package"
             try:
                 repo_name, pkg_name = parse_dependency_name(dep_key)
@@ -80,51 +94,42 @@ def update(ctx):
                 click.echo(f"Error: {e}", err=True)
                 sys.exit(1)
 
+            if pkg_name in resolved_packages:
+                # TODO: Check version compatibility
+                continue
+
             # Select repositories to search
             if repo_name:
-                # Use specific repository
-                repos_to_try = [r for r in all_repos if r.name == repo_name]
-                if not repos_to_try:
-                    click.echo(
-                        f"Error: Repository '{repo_name}' not found for dependency '{dep_key}'",
-                        err=True
-                    )
-                    click.echo(f"Available repositories: {', '.join(r.name for r in all_repos)}")
+                if repo_name not in repo_indexes:
+                    click.echo(f"Error: Repository '{repo_name}' not found or unreachable", err=True)
                     sys.exit(1)
+                repos_to_try = [repo_indexes[repo_name]]
                 click.echo(f"Resolving {pkg_name} from {repo_name}...")
             else:
-                # Try all repositories
-                repos_to_try = all_repos
+                repos_to_try = list(repo_indexes.values())
                 click.echo(f"Resolving {pkg_name}...")
 
             resolved = None
-
-            # Try each repository
-            for repo in repos_to_try:
-                try:
-                    idx = repository.fetch_index(repo.url)
-                    if pkg_name in idx.packages:
-                        resolved_entry = resolver.resolve_version(dep_constraint, idx.packages[pkg_name])
-                        if resolved_entry:
-                            lockfile.add_locked_dependency(
-                                lock,
-                                pkg_name,
-                                resolved_entry.version,
-                                repo.name,
-                                resolved_entry.url,
-                                resolved_entry.digest
-                            )
-                            resolved = resolved_entry
-                            click.echo(f"  ✓ {pkg_name} {resolved_entry.version} from {repo.name}")
-                            break
-                except Exception as e:
-                    if repo_name:
-                        # If a specific repo is specified, this is an error
-                        click.echo(f"Error: Failed to fetch from {repo.name}: {e}", err=True)
-                        sys.exit(1)
-                    else:
-                        # If we go through everything - a warning
-                        click.echo(f"Warning: Failed to fetch from {repo.name}: {e}", err=True)
+            for repo_cfg, idx in repos_to_try:
+                if pkg_name in idx.packages:
+                    resolved_entry = resolver.resolve_version(dep_constraint, idx.packages[pkg_name])
+                    if resolved_entry:
+                        lockfile.add_locked_dependency(
+                            lock,
+                            pkg_name,
+                            resolved_entry.version,
+                            repo_cfg.name,
+                            resolved_entry.url,
+                            resolved_entry.digest
+                        )
+                        resolved_packages[pkg_name] = resolved_entry
+                        resolved = resolved_entry
+                        click.echo(f"  ✓ {pkg_name} {resolved_entry.version} from {repo_cfg.name}")
+                        
+                        # Add transitive dependencies to pending
+                        for trans_dep in resolved_entry.dependencies:
+                            pending.append((trans_dep.name, trans_dep.version))
+                        break
 
             if not resolved:
                 click.echo(f"Error: Could not resolve dependency: {dep_key} {dep_constraint}", err=True)

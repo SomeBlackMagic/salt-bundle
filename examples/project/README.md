@@ -16,15 +16,20 @@ pip install salt-bundle
 project: my-infrastructure
 vendor_dir: vendor
 
+repositories:
+  - name: main
+    url: https://formulas.example.com/
+
 dependencies:
-  nginx: "^1.0.0"
-  mysql: "2.3.1"
+  foo: "^0.1.0"
 ```
 
-2. Install dependencies:
+2. Resolve and install dependencies:
 
 ```bash
-salt-bundle vendor
+# This will resolve dependencies, pull in transitive ones,
+# create a lock file, and install everything to vendor/
+salt-bundle project update
 ```
 
 3. Run Salt commands from the project directory:

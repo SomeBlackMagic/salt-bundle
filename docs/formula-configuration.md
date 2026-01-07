@@ -182,7 +182,7 @@ salt:
 **Type:** List of objects
 **Default:** Empty list
 
-Formula dependencies with version constraints.
+Formula dependencies with version constraints. These dependencies are **transitive**, meaning if your formula depends on another formula, `salt-bundle` will recursively resolve and install all required dependencies in the tree.
 
 ```yaml
 dependencies:

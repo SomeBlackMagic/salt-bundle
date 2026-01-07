@@ -70,16 +70,23 @@ def generate_index(repo_dir: Path | str, base_url: Optional[str] = None) -> Inde
                 created=datetime.now(),
                 keywords=meta.keywords,
                 maintainers=meta.maintainers,
-                sources=meta.sources
+                sources=meta.sources,
+                dependencies=meta.dependencies
             )
 
             # Add to index
             if meta.name not in index.packages:
                 index.packages[meta.name] = []
 
-            # Check if version already exists
-            existing_versions = [e.version for e in index.packages[meta.name]]
-            if meta.version not in existing_versions:
+            # Update or add version entry
+            found = False
+            for i, existing_entry in enumerate(index.packages[meta.name]):
+                if existing_entry.version == meta.version:
+                    index.packages[meta.name][i] = entry
+                    found = True
+                    break
+            
+            if not found:
                 index.packages[meta.name].append(entry)
 
         except Exception as e:
@@ -192,12 +199,15 @@ def download_package(
     # Download package
     parsed = urlparse(url)
     
+    # Ensure repo_url ends with a slash for proper urljoin
+    base_repo_url = repo_url if repo_url.endswith('/') else repo_url + '/'
+
     if parsed.scheme in ('http', 'https'):
         # Absolute URL
         download_url = url
     else:
         # Relative URL, join with repo base
-        download_url = urljoin(repo_url, url)
+        download_url = urljoin(base_repo_url, url)
 
     parsed_download = urlparse(download_url)
 
@@ -216,11 +226,11 @@ def download_package(
             source_path = Path(parsed_download.path)
         else:
             # Relative path from repo
-            parsed_repo = urlparse(repo_url)
+            parsed_repo = urlparse(base_repo_url)
             if parsed_repo.scheme == 'file':
                 repo_path = Path(parsed_repo.path)
             else:
-                repo_path = Path(repo_url)
+                repo_path = Path(base_repo_url)
             source_path = repo_path / url
 
         if not source_path.exists():

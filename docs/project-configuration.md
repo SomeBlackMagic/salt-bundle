@@ -106,7 +106,11 @@ See [Adding Repositories](installation-guide.md#adding-repositories) for details
 **Type:** Dictionary (string → string)
 **Default:** Empty dictionary
 
-Formula dependencies with version constraints.
+Formula dependencies with version constraints. These dependencies are **transitive**. When you run `salt-bundle project update`, it will:
+1.  Read these direct dependencies.
+2.  Pull in all transitive dependencies (dependencies of dependencies) from the formulas' `.saltbundle.yaml` files.
+3.  Resolve the entire dependency tree.
+4.  Install all resolved formulas into the `vendor_dir`.
 
 **Format:**
 

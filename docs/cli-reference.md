@@ -280,18 +280,20 @@ salt-bundle project update -C /path/to/project
 ```
 
 **Behavior:**
-1. Reads dependencies from `.salt-dependencies.yaml`
+1. Reads direct dependencies from `.salt-dependencies.yaml`
 2. Queries configured repositories for available versions
-3. Resolves version constraints
-4. Creates/updates `.salt-dependencies.lock`
-5. Downloads and installs packages
-6. Syncs Salt extensions
+3. **Recursively resolves** transitive dependencies (dependencies of dependencies)
+4. Resolves version constraints to the best matching versions
+5. Creates or updates `.salt-dependencies.lock` with the full tree of resolved packages
+6. Downloads and installs all resolved packages to the vendor directory
+7. Syncs Salt extensions
 
 **Dependency resolution:**
 - Searches all configured repositories (project + user)
 - Can specify repository: `repo/package` or search all: `package`
-- Resolves version constraints (e.g., `>=1.0.0`, `~1.2.0`)
-- Fails if any dependency cannot be resolved
+- Resolves version constraints (e.g., `>=1.0.0`, `~1.2.0`, `^1.0.0`)
+- Automatically discovers and pulls in transitive dependencies defined in formula `.saltbundle.yaml` files
+- Fails if any dependency in the tree cannot be resolved or if there are unresolvable version conflicts
 
 **Use cases:**
 - Adding new dependencies

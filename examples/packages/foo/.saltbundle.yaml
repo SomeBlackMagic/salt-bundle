@@ -5,7 +5,9 @@ maintainers:
   - name: Developer
     email: dev@example.com
 
-dependencies: []
+dependencies:
+  - name: bar
+    version: ">=1.0.0"
 
 salt:
   min_version: '3006'

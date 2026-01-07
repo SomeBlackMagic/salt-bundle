@@ -34,7 +34,7 @@ maintainers:                    # Optional: List of maintainers
 salt:                           # Optional: Salt compatibility
   min_version: string           # Optional: Minimum Salt version
   max_version: string           # Optional: Maximum Salt version
-dependencies:                   # Optional: Formula dependencies
+dependencies:                   # Optional: Formula dependencies (pulled recursively)
   - name: string                # Required: Dependency name
     version: string             # Required: Version constraint
 entry:                          # Optional: Entry points (reserved)

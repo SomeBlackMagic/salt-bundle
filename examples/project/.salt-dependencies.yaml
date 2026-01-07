@@ -1,11 +1,11 @@
-project: my-infrastructure
+project: example-project
 version: 1.0.0
 vendor_dir: vendor
 
 repositories:
-  - name: main
-    url: https://github.com/example/salt-formulas
+  - name: local
+    url: file:///srv/salt-repo/
 
 dependencies:
-  nginx: "^1.0.0"
-  mysql: "2.3.1"
+  # foo depends on bar, so 'salt-bundle project update' will install both
+  foo: "^0.1.0"
