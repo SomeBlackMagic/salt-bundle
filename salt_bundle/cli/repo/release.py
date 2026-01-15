@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from salt_bundle import release
+from salt_bundle import release as release_module
 
 
 @click.command()
@@ -160,7 +160,7 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
             sys.exit(1)
 
         # Run release process
-        released, errors = release.release_formulas(
+        released, errors = release_module.release_formulas(
             formulas_path,
             provider_instance,
             skip_packaging=skip_packaging,
