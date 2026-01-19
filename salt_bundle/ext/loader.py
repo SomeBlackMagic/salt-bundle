@@ -215,49 +215,19 @@ def fileserver_dirs(opts: Dict[str, Any] = None) -> List[str]:
 
 def configure(opts: Dict[str, Any] = None) -> Dict[str, Any]:
     """
-    Automatically register vendor_dir as an additional file_root.
+    Configure Salt options for vendor formulas.
 
-    This makes formulas in vendor/* visible to Salt file server
-    (salt, salt-call --local, salt-ssh).
+    NOTE: We do NOT add vendor_dir to file_roots because this causes
+    Salt to recursively copy _modules and _states directories into cache,
+    creating infinite nesting (modules/modules/modules/...).
+
+    Instead, modules and states are loaded via module_dirs() and states_dirs()
+    hooks, which Salt's loader calls directly.
     """
     if opts is None:
         opts = globals().get("__opts__", {})
 
-    # Locate project configuration
-    cfg_path = _find_project_config()
-    if not cfg_path:
-        return opts
-
-    cfg = _load_project_config(cfg_path)
-    if not cfg:
-        return opts
-
-    # Compute vendor path
-    project_dir = cfg_path.parent
-    vendor_dir_name = cfg.get("vendor_dir", "vendor")
-    vendor_path = (project_dir / vendor_dir_name).resolve()
-
-    if not vendor_path.exists():
-        log.warning(f"SaltBundle: vendor_dir not found: {vendor_path}")
-        return opts
-
-    # Prepare file_roots structure
-    file_roots = opts.get("file_roots")
-    if not isinstance(file_roots, dict):
-        file_roots = {"base": []}
-
-    # Get base roots as a copy
-    base_roots = list(file_roots.get("base", []))
-
-    # Register vendor dir if not already present
-    vpath_str = str(vendor_path)
-    if vpath_str not in base_roots:
-        base_roots.append(vpath_str)
-        log.debug(f"SaltBundle: added vendor_dir to file_roots: {vpath_str}")
-
-    # Save back into opts
-    file_roots["base"] = base_roots
-    opts["file_roots"] = file_roots
-
+    # Just return opts without modification
+    # Module/state loading is handled by module_dirs() and states_dirs()
     return opts
 
