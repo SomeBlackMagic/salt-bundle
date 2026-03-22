@@ -72,6 +72,36 @@ def install_package_to_vendor(
     return target_dir
 
 
+def symlink_path_package_to_vendor(
+    source_path: Path | str,
+    package_name: str,
+    vendor_dir: Path
+) -> Path:
+    """Install a path-type package by symlinking the source directory into vendor.
+
+    Args:
+        source_path: Absolute path to the local formula directory
+        package_name: Package name (used as the vendor subdirectory name)
+        vendor_dir: Vendor directory path
+
+    Returns:
+        Path to the symlink in the vendor directory
+    """
+    source_path = Path(source_path).resolve()
+    target_link = vendor_dir / package_name
+
+    if target_link.exists() or target_link.is_symlink():
+        if target_link.is_symlink():
+            target_link.unlink()
+        elif target_link.is_dir():
+            shutil.rmtree(target_link)
+        else:
+            target_link.unlink()
+
+    target_link.symlink_to(source_path)
+    return target_link
+
+
 def is_package_installed(package_name: str, vendor_dir: Path) -> bool:
     """Check if package is installed in vendor directory.
 

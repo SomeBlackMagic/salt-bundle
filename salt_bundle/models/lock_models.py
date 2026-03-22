@@ -1,5 +1,6 @@
 """Pydantic models for lock file (.salt-dependencies.lock)."""
 
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -8,7 +9,8 @@ class LockedDependency(BaseModel):
     version: str
     repository: str
     url: str
-    digest: str  # format: "sha256:<hex>"
+    digest: str  # format: "sha256:<hex>" or "path" for local path repos
+    path: Optional[str] = None  # absolute path for type=path repositories
 
 
 class LockFile(BaseModel):

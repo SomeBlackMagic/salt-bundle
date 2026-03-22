@@ -80,7 +80,10 @@ def update(ctx):
         repo_indexes = {}
         for repo in all_repos:
             try:
-                repo_indexes[repo.name] = (repo, repository.fetch_index(repo.url))
+                if repo.type == "path":
+                    repo_indexes[repo.name] = (repo, repository.fetch_index_from_path_repo(repo.url))
+                else:
+                    repo_indexes[repo.name] = (repo, repository.fetch_index(repo.url))
             except Exception as e:
                 click.echo(f"Warning: Failed to fetch from {repo.name}: {e}", err=True)
 
@@ -120,7 +123,8 @@ def update(ctx):
                             resolved_entry.version,
                             repo_cfg.name,
                             resolved_entry.url,
-                            resolved_entry.digest
+                            resolved_entry.digest,
+                            path=resolved_entry.url if repo_cfg.type == "path" else None,
                         )
                         resolved_packages[pkg_name] = resolved_entry
                         resolved = resolved_entry
@@ -142,6 +146,12 @@ def update(ctx):
         # Install packages
         for dep_name, locked_dep in lock.dependencies.items():
             click.echo(f"Installing {dep_name} {locked_dep.version}...")
+
+            if locked_dep.path is not None:
+                # path-type repository: symlink the local directory
+                vendor.symlink_path_package_to_vendor(locked_dep.path, dep_name, vendor_dir)
+                click.echo(f"  (symlinked from {locked_dep.path})")
+                continue
 
             # Find repository URL
             repo_url = None

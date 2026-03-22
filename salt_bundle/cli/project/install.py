@@ -80,6 +80,12 @@ def install(ctx):
         for dep_name, locked_dep in lock.dependencies.items():
             click.echo(f"Installing {dep_name} {locked_dep.version}...")
 
+            if locked_dep.path is not None:
+                # path-type repository: symlink the local directory
+                vendor.symlink_path_package_to_vendor(locked_dep.path, dep_name, vendor_dir)
+                click.echo(f"  (symlinked from {locked_dep.path})")
+                continue
+
             # Find repository URL
             repo_url = None
             for repo in all_repos:

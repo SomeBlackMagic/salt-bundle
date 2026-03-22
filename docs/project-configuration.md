@@ -89,11 +89,17 @@ repositories:
     url: https://test.example.com/repo/
   - name: local
     url: file:///srv/salt-repo/
+  - name: my-formula
+    type: path
+    url: ../my-formula
 ```
 
 **Repository object fields:**
 - `name` (required): Repository identifier
-- `url` (required): Repository base URL (HTTP/HTTPS/file)
+- `url` (required): Repository base URL (HTTP/HTTPS/file) or local directory path for `type: path`
+- `type` (optional): Repository type — `remote` (default) or `path`
+
+**`type: path` repositories** point directly to a local formula directory and are intended for development and testing. Instead of downloading a `.tgz` archive, salt-bundle creates a symlink from `vendor/<name>` to the local directory. Changes made in the local directory are immediately visible without repacking or republishing. See [Path Repositories](#path-repositories-for-local-development) for details.
 
 **Priority order:**
 1. Project repositories (top to bottom)
@@ -234,6 +240,32 @@ dependencies:
   postgresql: "13.5.0"
   redis: "6.2.6"
 ```
+
+### Development Project with Local Formulas
+
+When actively developing a formula, use `type: path` to reference it directly without packaging:
+
+```yaml
+project: dev-environment
+version: 0.1.0
+vendor_dir: vendor
+
+repositories:
+  # Local formula under active development — no packaging needed
+  - name: my-nginx
+    type: path
+    url: ../nginx-formula
+
+  # Remote repository for stable dependencies
+  - name: main
+    url: https://formulas.example.com/
+
+dependencies:
+  nginx: "^2.0.0"       # resolved from local path repo
+  postgresql: "^13.0"   # resolved from main remote repo
+```
+
+Running `salt-bundle project update` will create a symlink `vendor/nginx -> /abs/path/to/nginx-formula`. Any edit to the formula is immediately available without re-running any commands.
 
 ### Multi-Environment Project
 
@@ -383,7 +415,7 @@ dependencies:
 
 ### .salt-dependencies.lock
 
-After running `salt-bundle project install`, a lock file is generated:
+After running `salt-bundle project update`, a lock file is generated:
 
 ```yaml
 dependencies:
@@ -399,7 +431,21 @@ dependencies:
     digest: sha256:def456...
 ```
 
+For `type: path` repositories the lock entry looks different — it records the absolute local path and uses `"path"` as the digest value:
+
+```yaml
+dependencies:
+  nginx:
+    version: 2.0.0
+    repository: my-nginx
+    url: /home/user/nginx-formula
+    digest: path
+    path: /home/user/nginx-formula
+```
+
 **Always commit this file** to version control for reproducible deployments.
+
+> **Note:** Lock entries with `digest: path` reference an absolute path on the developer's machine. These entries are only useful locally — on CI/CD or other machines the path will not exist. Consider using path repositories only in developer-local overrides and keeping CI configs pointing to remote repositories.
 
 ### Vendor Directory
 
@@ -407,11 +453,8 @@ Structure after installation:
 
 ```
 vendor/
-├── nginx/
-│   ├── .saltbundle.yaml
-│   ├── init.sls
-│   └── ...
-├── mysql/
+├── nginx/          # symlink → /home/user/nginx-formula  (path repo)
+├── mysql/          # unpacked directory                  (remote repo)
 │   ├── .saltbundle.yaml
 │   ├── init.sls
 │   └── ...
@@ -652,6 +695,113 @@ repositories:
 dependencies:
   app: "^1.0"  # Resolves from env-specific first
 ```
+
+## Path Repositories for Local Development
+
+Path repositories allow you to use a local formula directory as a dependency source. This is the recommended workflow when you are simultaneously developing a formula and a project that uses it.
+
+### How It Works
+
+1. You add a repository with `type: path` pointing to your local formula directory.
+2. `salt-bundle project update` reads `.saltbundle.yaml` from that directory, resolves the version constraint, and creates a **symlink** in `vendor/` instead of downloading an archive.
+3. Any changes you make to the local formula are immediately reflected in the vendor directory — no repacking required.
+
+### Workflow Example
+
+Suppose you have this directory layout:
+
+```
+~/projects/
+├── nginx-formula/          # formula under development
+│   ├── .saltbundle.yaml    # name: nginx, version: 2.1.0
+│   ├── init.sls
+│   └── ...
+└── my-infra/               # Salt project using the formula
+    ├── .salt-dependencies.yaml
+    └── top.sls
+```
+
+Configure `.salt-dependencies.yaml` in `my-infra/`:
+
+```yaml
+project: my-infra
+
+repositories:
+  - name: local-nginx
+    type: path
+    url: ../nginx-formula   # relative path from the project directory
+
+  - name: main
+    url: https://formulas.example.com/
+
+dependencies:
+  nginx: "^2.0.0"
+```
+
+Run:
+
+```bash
+cd ~/projects/my-infra
+salt-bundle project update
+```
+
+Result:
+
+```
+Resolving nginx...
+  ✓ nginx 2.1.0 from local-nginx
+Installing nginx 2.1.0...
+  (symlinked from /home/user/projects/nginx-formula)
+```
+
+`vendor/nginx` is now a symlink to `~/projects/nginx-formula`. Edit the formula, test immediately:
+
+```bash
+salt-call --local state.apply nginx
+```
+
+### Switching Between Local and Remote
+
+When your formula is ready and published to a remote repository, remove the `path` repository entry and run `salt-bundle project update` again — the symlink will be replaced with the downloaded archive.
+
+```yaml
+# Before (development)
+repositories:
+  - name: local-nginx
+    type: path
+    url: ../nginx-formula
+
+# After (production)
+repositories:
+  - name: main
+    url: https://formulas.example.com/
+```
+
+### Relative vs Absolute Paths
+
+Both relative and absolute paths are supported in `url`:
+
+```yaml
+repositories:
+  # Relative (resolved from the project directory)
+  - name: formula-a
+    type: path
+    url: ../formula-a
+
+  # Absolute
+  - name: formula-b
+    type: path
+    url: /home/user/projects/formula-b
+```
+
+Relative paths are converted to absolute internally when the lock file is written.
+
+### Limitations
+
+- The local formula directory **must contain** a valid `.saltbundle.yaml` with `name` and `version`.
+- The version in `.saltbundle.yaml` must satisfy the constraint in `dependencies`, otherwise resolution fails.
+- Lock file entries with `digest: path` contain an **absolute path** specific to the developer's machine. Do not rely on them in CI/CD environments — use remote repository entries there instead.
+- `type: path` is not supported in global user config (`~/.config/salt-bundle/config.yaml`) because paths are project-relative. Declare them in the project's `.salt-dependencies.yaml`.
 
 ## Troubleshooting
 

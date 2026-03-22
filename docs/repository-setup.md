@@ -5,6 +5,7 @@ Guide for setting up and maintaining Salt formula repositories.
 ## Table of Contents
 
 - [Repository Types](#repository-types)
+- [Path Repository](#path-repository)
 - [Local Repository](#local-repository)
 - [HTTP Repository](#http-repository)
 - [GitHub Repository](#github-repository)
@@ -13,13 +14,73 @@ Guide for setting up and maintaining Salt formula repositories.
 
 ## Repository Types
 
-Salt Bundle supports three repository types:
+Salt Bundle supports four repository types:
 
-| Type | URL Format | Use Case |
-|------|------------|----------|
-| **Local** | `file:///path/to/repo` | Development, testing, private networks |
-| **HTTP/HTTPS** | `https://example.com/repo/` | Production, CDN, enterprise |
-| **GitHub** | GitHub Releases + Pages | Open source, CI/CD automation |
+| Type | `type` field | URL / Path | Use Case |
+|------|-------------|------------|----------|
+| **Remote HTTP/HTTPS** | `remote` (default) | `https://example.com/repo/` | Production, CDN, enterprise |
+| **Remote file** | `remote` (default) | `file:///path/to/repo` | Local network, shared storage |
+| **GitHub** | `remote` (default) | GitHub Releases + Pages | Open source, CI/CD automation |
+| **Path** | `path` | `../my-formula` or `/abs/path` | Active formula development |
+
+**Remote repositories** (all `type: remote` entries) require a pre-generated `index.yaml`. Packages are downloaded as `.tgz` archives and cached locally.
+
+**Path repositories** (`type: path`) point to a plain formula directory containing `.saltbundle.yaml`. No packaging or index is needed — salt-bundle reads metadata directly and creates a symlink in `vendor/`. Intended for local development only.
+
+## Path Repository
+
+A path repository points directly to an unpacked formula directory. It is the simplest way to use a formula you are actively developing — no packing, no index, no server required.
+
+### Setup
+
+The target directory must contain a valid `.saltbundle.yaml`:
+
+```
+~/projects/my-formula/
+├── .saltbundle.yaml    # name: my-formula, version: 1.0.0
+├── init.sls
+└── files/
+```
+
+### Using a Path Repository
+
+Add a `type: path` entry to your project's `.salt-dependencies.yaml`:
+
+```yaml
+repositories:
+  - name: my-formula
+    type: path
+    url: ../my-formula     # relative to project dir, or absolute
+
+dependencies:
+  my-formula: "^1.0.0"
+```
+
+Run:
+
+```bash
+salt-bundle project update
+```
+
+This creates `vendor/my-formula` as a **symlink** pointing to your local directory. Edits to the formula are immediately visible with no additional commands.
+
+### How It Differs from `file://` Repositories
+
+| Feature | `type: path` | `type: remote` + `file://` URL |
+|---------|-------------|-------------------------------|
+| Needs `index.yaml` | No | Yes |
+| Needs packed `.tgz` | No | Yes |
+| Installed as | Symlink | Extracted directory |
+| Live reload on edit | Yes | No |
+| Use case | Formula development | Local mirror / offline repo |
+
+### Limitations
+
+- Only a single formula per repository entry. Each formula needs its own `type: path` entry.
+- The formula version in `.saltbundle.yaml` must satisfy the constraint in `dependencies`.
+- Path entries in the lock file contain an absolute path and are not portable across machines.
+
+---
 
 ## Local Repository
 

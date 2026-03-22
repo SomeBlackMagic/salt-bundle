@@ -1,6 +1,6 @@
 """Pydantic models for project configuration (.saltbundle.yaml for project)."""
 
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -8,6 +8,7 @@ class RepositoryConfig(BaseModel):
     """Repository configuration entry."""
     name: str
     url: str
+    type: Literal["remote", "path"] = "remote"
 
 
 class ProjectConfig(BaseModel):

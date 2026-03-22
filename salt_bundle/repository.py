@@ -159,6 +159,45 @@ def fetch_index(repo_url: str) -> Index:
         raise ValueError(f"Unsupported URL scheme: {parsed.scheme}")
 
 
+def fetch_index_from_path_repo(repo_path: Path | str) -> Index:
+    """Build a synthetic index from a local formula directory (path repository).
+
+    Reads .saltbundle.yaml from the formula directory and returns an Index
+    containing a single entry whose url is the absolute path of the directory.
+
+    Args:
+        repo_path: Path to the local formula directory
+
+    Returns:
+        Index object with the formula as a single entry
+
+    Raises:
+        FileNotFoundError: If directory or .saltbundle.yaml doesn't exist
+        ValueError: If .saltbundle.yaml is invalid
+    """
+    from .config import load_package_meta
+    from .models.index_models import IndexEntry
+
+    repo_path = Path(repo_path).resolve()
+    if not repo_path.exists():
+        raise FileNotFoundError(f"Path repository not found: {repo_path}")
+
+    meta = load_package_meta(repo_path)
+
+    entry = IndexEntry(
+        version=meta.version,
+        url=str(repo_path),
+        digest="path",
+        created=datetime.now(),
+        keywords=meta.keywords,
+        maintainers=meta.maintainers,
+        sources=meta.sources,
+        dependencies=meta.dependencies,
+    )
+
+    return Index(generated=datetime.now(), packages={meta.name: [entry]})
+
+
 def download_package(
     url: str,
     repo_url: str,

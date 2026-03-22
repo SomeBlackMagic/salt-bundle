@@ -57,7 +57,8 @@ def add_locked_dependency(
     version: str,
     repository: str,
     url: str,
-    digest: str
+    digest: str,
+    path: str = None
 ) -> None:
     """Add or update locked dependency.
 
@@ -67,13 +68,15 @@ def add_locked_dependency(
         version: Resolved version
         repository: Repository name
         url: Package URL
-        digest: Package digest
+        digest: Package digest ("path" for local path repositories)
+        path: Absolute local path for type=path repositories
     """
     lockfile.dependencies[name] = LockedDependency(
         version=version,
         repository=repository,
         url=url,
-        digest=digest
+        digest=digest,
+        path=path,
     )
 
 

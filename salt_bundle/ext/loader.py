@@ -78,7 +78,15 @@ def _get_formula_paths(project_dir: Path, vendor_dir: str) -> List[Path]:
 
     out = []
     for item in root.iterdir():
-        if item.is_dir() and not item.name.startswith("."):
+        if item.name.startswith("."):
+            continue
+        if item.is_symlink():
+            resolved = item.resolve()
+            if resolved.is_dir():
+                out.append(resolved)
+            else:
+                log.warning(f"SaltBundle: skipping symlink {item.name!r} in vendor: target is not a directory or is broken")
+        elif item.is_dir():
             out.append(item)
 
     if out:
