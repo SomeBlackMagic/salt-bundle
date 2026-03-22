@@ -151,6 +151,11 @@ def module_dirs(opts: Dict[str, Any] = None) -> List[str]:
     return list(_get_module_dirs("modules"))
 
 
+def auth_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _auth directories in vendor formulas."""
+    return list(_get_module_dirs("auth"))
+
+
 def states_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _states directories in vendor formulas."""
     result = list(_get_module_dirs("states"))
@@ -158,9 +163,39 @@ def states_dirs(opts: Dict[str, Any] = None) -> List[str]:
     return result
 
 
+def cache_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _cache directories in vendor formulas."""
+    return list(_get_module_dirs("cache"))
+
+
+def executor_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _executors directories in vendor formulas."""
+    return list(_get_module_dirs("executors"))
+
+
 def grains_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _grains directories in vendor formulas."""
     return list(_get_module_dirs("grains"))
+
+
+def log_handlers_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _log_handlers directories in vendor formulas."""
+    return list(_get_module_dirs("log_handlers"))
+
+
+def matchers_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _matchers directories in vendor formulas."""
+    return list(_get_module_dirs("matchers"))
+
+
+def metaproxy_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _metaproxy directories in vendor formulas."""
+    return list(_get_module_dirs("metaproxy"))
+
+
+def netapi_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _netapi directories in vendor formulas."""
+    return list(_get_module_dirs("netapi"))
 
 
 def pillar_dirs(opts: Dict[str, Any] = None) -> List[str]:
@@ -168,9 +203,19 @@ def pillar_dirs(opts: Dict[str, Any] = None) -> List[str]:
     return list(_get_module_dirs("pillar"))
 
 
+def queue_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _queues directories in vendor formulas."""
+    return list(_get_module_dirs("queues"))
+
+
 def returner_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _returners directories in vendor formulas."""
     return list(_get_module_dirs("returners"))
+
+
+def roster_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _roster directories in vendor formulas."""
+    return list(_get_module_dirs("roster"))
 
 
 def runner_dirs(opts: Dict[str, Any] = None) -> List[str]:
@@ -178,14 +223,44 @@ def runner_dirs(opts: Dict[str, Any] = None) -> List[str]:
     return list(_get_module_dirs("runners"))
 
 
+def sdb_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _sdb directories in vendor formulas."""
+    return list(_get_module_dirs("sdb"))
+
+
+def serializers_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _serializers directories in vendor formulas."""
+    return list(_get_module_dirs("serializers"))
+
+
 def outputter_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _output directories in vendor formulas."""
     return list(_get_module_dirs("output"))
 
 
+def pkgdb_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _pkgdb directories in vendor formulas."""
+    return list(_get_module_dirs("pkgdb"))
+
+
+def pkgfiles_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _pkgfiles directories in vendor formulas."""
+    return list(_get_module_dirs("pkgfiles"))
+
+
+def top_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _tops directories in vendor formulas."""
+    return list(_get_module_dirs("tops"))
+
+
 def utils_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _utils directories in vendor formulas."""
     return list(_get_module_dirs("utils"))
+
+
+def wrapper_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _wrapper directories in vendor formulas."""
+    return list(_get_module_dirs("wrapper"))
 
 
 def render_dirs(opts: Dict[str, Any] = None) -> List[str]:
@@ -203,9 +278,29 @@ def proxy_dirs(opts: Dict[str, Any] = None) -> List[str]:
     return list(_get_module_dirs("proxy"))
 
 
+def cloud_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _clouds directories in vendor formulas."""
+    return list(_get_module_dirs("clouds"))
+
+
 def beacons_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _beacons directories in vendor formulas."""
     return list(_get_module_dirs("beacons"))
+
+
+def thorium_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _thorium directories in vendor formulas."""
+    return list(_get_module_dirs("thorium"))
+
+
+def tokens_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _tokens directories in vendor formulas."""
+    return list(_get_module_dirs("tokens"))
+
+
+def wheel_dirs(opts: Dict[str, Any] = None) -> List[str]:
+    """Return paths to _wheel directories in vendor formulas."""
+    return list(_get_module_dirs("wheel"))
 
 
 def fileserver_dirs(opts: Dict[str, Any] = None) -> List[str]:
@@ -238,4 +333,3 @@ def configure(opts: Dict[str, Any] = None) -> Dict[str, Any]:
     # Just return opts without modification
     # Module/state loading is handled by module_dirs() and states_dirs()
     return opts
-
