@@ -1,6 +1,6 @@
 [project]
 name = "salt-bundle"
-version = "1.1.1"
+version = "1.1.2"
 description = "Salt package manager prototype"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,7 +19,8 @@ salt-bundle = "salt_bundle.cli:main"
 [project.entry-points."salt.loader"]
 module_dirs = "salt_bundle.ext.loader:module_dirs"
 auth_dirs = "salt_bundle.ext.loader:auth_dirs"
-states_dirs = "salt_bundle.ext.loader:states_dirs"
+states_dirs = "salt_bundle.ext.loader:states_dirs" #TODO black magic. States not imnported in salt-ssh without this line
+state_dirs = "salt_bundle.ext.loader:states_dirs"
 cache_dirs = "salt_bundle.ext.loader:cache_dirs"
 executor_dirs = "salt_bundle.ext.loader:executor_dirs"
 grain_dirs = "salt_bundle.ext.loader:grains_dirs"
