@@ -691,13 +691,13 @@ Error: Could not resolve dependency: nginx ^2.0.0
 curl https://repo.example.com/index.yaml
 ```
 
-2. Check version constraint:
+1. Check version constraint:
 ```yaml
 # Try broader constraint
 nginx: "^1.0"  # Instead of ^2.0
 ```
 
-3. Check repository URL:
+1. Check repository URL:
 ```bash
 salt-bundle repo add --name main --url https://correct-url.example.com/
 ```
@@ -717,7 +717,7 @@ rm -rf ~/.cache/salt-bundle/packages/
 salt-bundle project update
 ```
 
-2. Check repository integrity:
+1. Check repository integrity:
 ```bash
 # Re-generate index on repository server
 cd /srv/salt-repo
@@ -738,7 +738,7 @@ Error: Failed to fetch from main: timeout
 curl -I https://repo.example.com/index.yaml
 ```
 
-2. Use local repository:
+1. Use local repository:
 ```bash
 salt-bundle repo add --name local --url file:///srv/salt-repo/
 ```

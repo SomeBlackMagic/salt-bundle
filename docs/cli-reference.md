@@ -147,8 +147,8 @@ salt-bundle formula sync [OPTIONS]
 
 **Options:**
 
-| Option              | Description                                           |
-|---------------------|-------------------------------------------------------|
+| Option             | Description                                           |
+|--------------------|-------------------------------------------------------|
 | `--cache-dir PATH` | Salt cache directory (auto-detected if not specified) |
 
 **Examples:**
@@ -351,9 +351,9 @@ salt-bundle repo add --name NAME --url URL
 
 **Options:**
 
-| Option        | Description                            |
-|---------------|----------------------------------------|
-| `--name NAME` | Repository name (unique identifier)    |
+| Option        | Description                              |
+|---------------|------------------------------------------|
+| `--name NAME` | Repository name (unique identifier)      |
 | `--url URL`   | Repository URL (must contain index.yaml) |
 
 **Examples:**
@@ -391,8 +391,8 @@ salt-bundle repo index [DIRECTORY] [OPTIONS]
 
 **Arguments:**
 
-| Argument    | Description                                                    |
-|-------------|----------------------------------------------------------------|
+| Argument    | Description                                                       |
+|-------------|-------------------------------------------------------------------|
 | `DIRECTORY` | Directory containing `.tar.gz` files (default: current directory) |
 
 **Options:**
@@ -690,10 +690,10 @@ git commit -m "Update dependencies"
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `1` | Error occurred |
+| Code | Meaning        |
+|------|----------------|
+| `0`  | Success        |
+| `1`  | Error occurred |
 
 ---
 

@@ -16,12 +16,12 @@ Guide for setting up and maintaining Salt formula repositories.
 
 Salt Bundle supports four repository types:
 
-| Type | `type` field | URL / Path | Use Case |
-|------|-------------|------------|----------|
-| **Remote HTTP/HTTPS** | `remote` (default) | `https://example.com/repo/` | Production, CDN, enterprise |
-| **Remote file** | `remote` (default) | `file:///path/to/repo` | Local network, shared storage |
-| **GitHub** | `remote` (default) | GitHub Releases + Pages | Open source, CI/CD automation |
-| **Path** | `path` | `../my-formula` or `/abs/path` | Active formula development |
+| Type                  | `type` field       | URL / Path                     | Use Case                      |
+|-----------------------|--------------------|--------------------------------|-------------------------------|
+| **Remote HTTP/HTTPS** | `remote` (default) | `https://example.com/repo/`    | Production, CDN, enterprise   |
+| **Remote file**       | `remote` (default) | `file:///path/to/repo`         | Local network, shared storage |
+| **GitHub**            | `remote` (default) | GitHub Releases + Pages        | Open source, CI/CD automation |
+| **Path**              | `path`             | `../my-formula` or `/abs/path` | Active formula development    |
 
 **Remote repositories** (all `type: remote` entries) require a pre-generated `index.yaml`. Packages are downloaded as `.tgz` archives and cached locally.
 
@@ -66,13 +66,13 @@ This creates `vendor/my-formula` as a **symlink** pointing to your local directo
 
 ### How It Differs from `file://` Repositories
 
-| Feature | `type: path` | `type: remote` + `file://` URL |
-|---------|-------------|-------------------------------|
-| Needs `index.yaml` | No | Yes |
-| Needs packed `.tgz` | No | Yes |
-| Installed as | Symlink | Extracted directory |
-| Live reload on edit | Yes | No |
-| Use case | Formula development | Local mirror / offline repo |
+| Feature             | `type: path`        | `type: remote` + `file://` URL |
+|---------------------|---------------------|--------------------------------|
+| Needs `index.yaml`  | No                  | Yes                            |
+| Needs packed `.tgz` | No                  | Yes                            |
+| Installed as        | Symlink             | Extracted directory            |
+| Live reload on edit | Yes                 | No                             |
+| Use case            | Formula development | Local mirror / offline repo    |
 
 ### Limitations
 

@@ -80,11 +80,11 @@ dependencies:
 
 **Examples:**
 
-| Constraint | Matches | Doesn't Match |
-|------------|---------|---------------|
-| `^2.1.5` | `2.1.5`, `2.2.0`, `2.9.9` | `2.1.4`, `3.0.0` |
-| `^1.0.0` | `1.0.0`, `1.5.0`, `1.9.9` | `0.9.9`, `2.0.0` |
-| `^0.2.3` | `0.2.3`, `0.2.9` | `0.2.2`, `0.3.0` |
+| Constraint | Matches                   | Doesn't Match    |
+|------------|---------------------------|------------------|
+| `^2.1.5`   | `2.1.5`, `2.2.0`, `2.9.9` | `2.1.4`, `3.0.0` |
+| `^1.0.0`   | `1.0.0`, `1.5.0`, `1.9.9` | `0.9.9`, `2.0.0` |
+| `^0.2.3`   | `0.2.3`, `0.2.9`          | `0.2.2`, `0.3.0` |
 
 **Use when:** You want new features and bug fixes, but not breaking changes.
 
@@ -104,11 +104,11 @@ dependencies:
 
 **Examples:**
 
-| Constraint | Matches | Doesn't Match |
-|------------|---------|---------------|
-| `~5.7.8` | `5.7.8`, `5.7.9`, `5.7.15` | `5.7.7`, `5.8.0` |
-| `~1.2.3` | `1.2.3`, `1.2.9` | `1.2.2`, `1.3.0` |
-| `~0.2` | `0.2.0`, `0.2.9` | `0.1.9`, `0.3.0` |
+| Constraint | Matches                    | Doesn't Match    |
+|------------|----------------------------|------------------|
+| `~5.7.8`   | `5.7.8`, `5.7.9`, `5.7.15` | `5.7.7`, `5.8.0` |
+| `~1.2.3`   | `1.2.3`, `1.2.9`           | `1.2.2`, `1.3.0` |
+| `~0.2`     | `0.2.0`, `0.2.9`           | `0.1.9`, `0.3.0` |
 
 **Use when:** You only want bug fixes, no new features.
 
@@ -125,11 +125,11 @@ dependencies:
 
 **Examples:**
 
-| Constraint | Matches | Doesn't Match |
-|------------|---------|---------------|
-| `1.2.*` | `1.2.0`, `1.2.5`, `1.2.99` | `1.1.9`, `1.3.0` |
-| `1.*` | `1.0.0`, `1.5.0`, `1.99.99` | `0.9.9`, `2.0.0` |
-| `*` | Any version | None |
+| Constraint | Matches                     | Doesn't Match    |
+|------------|-----------------------------|------------------|
+| `1.2.*`    | `1.2.0`, `1.2.5`, `1.2.99`  | `1.1.9`, `1.3.0` |
+| `1.*`      | `1.0.0`, `1.5.0`, `1.99.99` | `0.9.9`, `2.0.0` |
+| `*`        | Any version                 | None             |
 
 **Use when:** You want maximum flexibility in a version range.
 
@@ -180,8 +180,8 @@ dependencies:
 
 **Examples:**
 
-| Constraint | Matches | Doesn't Match |
-|------------|---------|---------------|
+| Constraint   | Matches                   | Doesn't Match    |
+|--------------|---------------------------|------------------|
 | `>=1.0,<2.0` | `1.0.0`, `1.5.0`, `1.9.9` | `0.9.9`, `2.0.0` |
 | `>=1.2,<1.5` | `1.2.0`, `1.3.0`, `1.4.9` | `1.1.9`, `1.5.0` |
 
@@ -393,13 +393,13 @@ git commit .salt-dependencies.lock -m "Update dependencies"
 
 ### Version Constraint Strategy
 
-| Scenario | Constraint | Example |
-|----------|------------|---------|
-| Active development | Caret `^` | `^1.5.0` |
-| Stable production | Tilde `~` | `~2.3.1` |
-| Critical systems | Exact | `1.2.3` |
-| Testing/bleeding edge | Range | `>=2.0,<3.0` |
-| Maximum compatibility | Wildcard | `2.*` |
+| Scenario              | Constraint | Example      |
+|-----------------------|------------|--------------|
+| Active development    | Caret `^`  | `^1.5.0`     |
+| Stable production     | Tilde `~`  | `~2.3.1`     |
+| Critical systems      | Exact      | `1.2.3`      |
+| Testing/bleeding edge | Range      | `>=2.0,<3.0` |
+| Maximum compatibility | Wildcard   | `2.*`        |
 
 ## Common Mistakes
 
