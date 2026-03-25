@@ -357,7 +357,7 @@ file_roots:
 
 ## License
 
-[Add your license here]
+Apache License 2.0
 
 ## Next Steps
 
@@ -365,3 +365,30 @@ file_roots:
 - **Consumers**: Read the [Installation Guide](installation-guide.md)
 - **CI/CD**: Check [CI/CD Integration](cicd-integration.md)
 - **Reference**: See [CLI Reference](cli-reference.md)
+
+## TODO
+
+### Dependency Resolution
+
+- [ ] **Conflict resolution** — when two packages require incompatible versions of the same dependency, resolution silently picks the first-resolved version (`if pkg_name in resolved_packages: continue` in `cli/project/update.py`). A proper conflict detection and error reporting mechanism is needed.
+- [ ] **Version compatibility check** — `# TODO: Check version compatibility` comment exists in `cli/project/update.py`; Salt `min_version` / `max_version` fields in formula metadata are parsed but never enforced at install time.
+- [ ] **Dependency graph output** — no command to visualize or inspect the resolved dependency graph; useful for debugging complex dependency trees.
+
+### Pillar Support
+
+- [ ] **Auto-discovery of pillar data** — the `ext_pillar` plugin currently returns only project metadata (`project_dir`, `vendor_dir`, `formulas`, `formula_paths`). Pillar data files (`pillar/*.sls`) from individual formulas are not automatically merged into the pillar namespace.
+
+### Platform Integration
+
+- [ ] **GitLab full support** — the `GitLabReleaseProvider` is partially implemented; package release to GitLab Package Registry and index publishing to GitLab Pages need to be completed and tested.
+- [ ] **salt-ssh stability** — the loader plugin is bypassed by salt-ssh's thin-client bundling path. A workaround exists (duplicated entry-point registrations with a `# TODO black magic` comment), but a proper solution is needed.
+
+### Security
+
+- [ ] **GPG signature verification** — packages are currently verified only by SHA256 digest. GPG signing of packages and signature verification on install would improve supply chain security.
+
+### UX / DX
+
+- [ ] **Dry-run for `project update`** — show what would change without modifying the lock file or vendor directory (mentioned in version-constraints.md as a planned feature).
+- [ ] **`--timeout` flag** — mentioned in cicd-integration.md but not implemented in CLI code.
+- [ ] **`formula sync` improvements** — `formula sync` copies modules to the Salt cache for use without the loader plugin; integration with salt-ssh thin client needs hardening.
