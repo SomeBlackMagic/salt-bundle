@@ -100,6 +100,7 @@ Edit `.saltbundle.yaml` to add more details:
 name: my-formula
 version: 1.0.0
 description: Formula for managing MyApp service
+formula_path: formula  # Optional: package files from this relative subdirectory
 
 maintainers:
   - name: Your Name
@@ -159,6 +160,10 @@ tests/
 temp/
 .idea/
 ```
+
+If `formula_path` is set in `.saltbundle.yaml`, keep `.saltbundleignore` next to
+`.saltbundle.yaml`. Its patterns are matched relative to the formula source directory, not
+relative to the repository root.
 
 ## Packaging
 

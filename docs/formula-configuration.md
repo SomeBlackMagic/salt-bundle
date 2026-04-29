@@ -12,6 +12,7 @@ The `.saltbundle.yaml` file in a formula directory defines package metadata, dep
 name: formula-name
 version: 1.2.3
 description: Brief description of the formula
+formula_path: formula
 
 maintainers:
   - name: Maintainer Name
@@ -86,6 +87,49 @@ Short description of the formula's purpose.
 ```yaml
 description: Nginx web server configuration and management
 ```
+
+#### `formula_path`
+
+**Type:** String
+**Default:** None
+
+Relative path to the directory that contains the actual formula files to package. When omitted,
+the directory containing `.saltbundle.yaml` is packaged.
+
+Use this when the repository root contains CI files, documentation, tests, or wrapper scripts
+and the Salt formula itself lives in a subdirectory.
+
+```yaml
+formula_path: formula
+```
+
+**Rules:**
+- Must be relative
+- Must not contain `..` path components
+- `.` and an empty value are treated as omitted
+
+With this layout:
+
+```text
+my-formula/
+├── .saltbundle.yaml
+├── .saltbundleignore
+├── README.md
+└── formula/
+    ├── init.sls
+    └── _modules/
+        └── mymod.py
+```
+
+Set:
+
+```yaml
+formula_path: formula
+```
+
+The archive will contain `init.sls`, `_modules/mymod.py`, and `.saltbundle.yaml` at the archive
+root. `.saltbundleignore` is still read from the directory containing `.saltbundle.yaml`, but its
+patterns are matched relative to `formula_path`.
 
 #### `maintainers`
 
@@ -292,6 +336,32 @@ dependencies:
     version: "~2.3.0"
   - name: ssl-certs
     version: ">=1.2,<2.0"
+```
+
+### Formula in a Subdirectory
+
+```yaml
+name: my-formula
+version: 1.0.0
+description: Formula stored below the repository root
+formula_path: formula
+
+dependencies: []
+```
+
+Example project layout:
+
+```text
+my-formula/
+├── .saltbundle.yaml
+├── .saltbundleignore
+├── README.md
+├── ci/
+└── formula/
+    ├── init.sls
+    ├── config.sls
+    └── _modules/
+        └── mymod.py
 ```
 
 ### Formula with Many Dependencies

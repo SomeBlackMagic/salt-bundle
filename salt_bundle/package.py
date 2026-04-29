@@ -8,7 +8,7 @@ from typing import Optional
 
 from .config import load_package_meta
 from .models.package_models import PackageMeta
-from .utils.fs import collect_files
+from .utils.fs import collect_files, load_ignore_patterns
 from .utils.hashing import calculate_sha256
 from .utils.yaml import load_yaml
 
@@ -78,18 +78,25 @@ def pack_formula(
     if not validate_semver(meta.version):
         raise ValueError(f"Invalid semver version: {meta.version}")
 
+    if meta.formula_path:
+        source_dir = (formula_dir / meta.formula_path).resolve()
+        formula_dir_resolved = formula_dir.resolve()
+        if not source_dir.is_relative_to(formula_dir_resolved):
+            raise ValueError(f"formula_path escapes formula_dir: {meta.formula_path}")
+        if not source_dir.is_dir():
+            raise FileNotFoundError(f"formula_path does not exist: {source_dir}")
+    else:
+        source_dir = formula_dir
+
     # Check for at least one .sls file
-    sls_files = list(formula_dir.glob('*.sls'))
+    sls_files = list(source_dir.glob('*.sls'))
     if not sls_files:
-        raise ValueError("No .sls files found in formula directory")
+        raise ValueError(f"No .sls files found in source directory: {source_dir}")
 
     # Collect files to pack
-    files = collect_files(formula_dir)
-
-    # Ensure .saltbundle.yaml is included
+    patterns = load_ignore_patterns(formula_dir)
+    files = collect_files(source_dir, patterns)
     saltbundle_yaml = formula_dir / '.saltbundle.yaml'
-    if saltbundle_yaml not in files:
-        files.insert(0, saltbundle_yaml)
 
     # Create archive
     archive_name = f"{meta.name}-{meta.version}.tgz"
@@ -97,8 +104,12 @@ def pack_formula(
 
     with tarfile.open(archive_path, 'w:gz') as tar:
         for file_path in files:
-            arcname = file_path.relative_to(formula_dir)
+            arcname = file_path.relative_to(source_dir)
+            if arcname == Path('.saltbundle.yaml') and file_path != saltbundle_yaml:
+                continue
             tar.add(file_path, arcname=str(arcname))
+        if saltbundle_yaml not in files:
+            tar.add(saltbundle_yaml, arcname='.saltbundle.yaml')
 
     return archive_path
 

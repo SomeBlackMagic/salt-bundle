@@ -199,6 +199,7 @@ Publishers                     Repository                    Consumers
 name: my-formula
 version: 1.0.0
 description: My Salt formula
+formula_path: formula  # Optional: package files from this relative subdirectory
 
 maintainers:
   - name: Developer Name

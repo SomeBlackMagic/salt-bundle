@@ -26,6 +26,7 @@ Formula root directory.
 name: string                    # Required: Package name (^[a-z0-9_-]+$)
 version: string                 # Required: Semantic version (MAJOR.MINOR.PATCH)
 description: string             # Optional: Short description
+formula_path: string            # Optional: Relative source directory to package
 keywords: [string, ...]         # Optional: List of tags
 sources: [string, ...]          # Optional: List of URLs
 maintainers:                    # Optional: List of maintainers
@@ -49,6 +50,7 @@ entry:                          # Optional: Entry points (reserved)
 name: nginx
 version: 2.1.5
 description: Nginx web server with SSL support
+formula_path: formula
 
 keywords:
   - nginx
@@ -85,6 +87,14 @@ dependencies:
 - Pattern: `MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]`
 - Must follow semantic versioning
 - Examples: `1.0.0`, `2.1.3-beta.1`, `1.0.0+build123`
+
+**formula_path:**
+- Optional relative path to the source directory whose files are packed
+- Must not be absolute
+- Must not contain `..` components
+- `.` and an empty value are treated as omitted
+- `.saltbundle.yaml` and `.saltbundleignore` remain in the formula root; archive paths for formula
+  files are relative to `formula_path`
 
 **salt.min_version / salt.max_version:**
 - Salt version numbers: `3006`, `3007`, `3008`, `3009`
@@ -394,6 +404,8 @@ formula-1.0.0.tgz
 
 - Must contain `.saltbundle.yaml`
 - Must contain at least one `.sls` file
+- If `formula_path` is set, files from that source directory are stored at archive root; the
+  source directory name itself is not included in archive entry paths.
 - All paths relative (no absolute paths)
 - No path traversal (`..` not allowed)
 
