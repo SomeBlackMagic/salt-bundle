@@ -15,6 +15,7 @@ jobs:
     env:
       PKG: salt-bundle
       INSTALL_ROOT: /opt/saltstack/salt-bundle
+      SALT_PYTHON_VERSION: "3.11"
 
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +40,12 @@ jobs:
       - name: Vendor ONLY non-salt deps
         run: |
           mkdir vendor
-          pip install --target vendor \
+          python3 -m pip install --target vendor \
+            --platform manylinux_2_17_x86_64 \
+            --implementation cp \
+            --python-version "${SALT_PYTHON_VERSION/./}" \
+            --abi "cp${SALT_PYTHON_VERSION/./}" \
+            --only-binary=:all: \
             "pydantic>=2" \
             "pydantic-core" \
             "typing-extensions" \
@@ -88,7 +94,7 @@ jobs:
           #!/bin/sh
           set -e
 
-          SITE_PACKAGES="/opt/saltstack/salt/lib/python3.10/site-packages"
+          SITE_PACKAGES=$(/opt/saltstack/salt/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
 
           # Create symlink for main module
           if [ ! -e "${SITE_PACKAGES}/salt_bundle" ]; then
@@ -120,7 +126,7 @@ jobs:
           #!/bin/sh
           set -e
 
-          SITE_PACKAGES="/opt/saltstack/salt/lib/python3.10/site-packages"
+          SITE_PACKAGES=$(/opt/saltstack/salt/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
 
           # Remove symlinks created by postinst
           if [ -L "${SITE_PACKAGES}/salt_bundle" ]; then
@@ -162,7 +168,7 @@ jobs:
             lib/=/opt/saltstack/salt-bundle/lib \
             bin/salt-bundle=/opt/saltstack/bin/salt-bundle \
             usr-bin/salt-bundle=/usr/bin/salt-bundle \
-            site-packages/=/opt/saltstack/salt/lib/python3.10/site-packages/
+            site-packages/=/opt/saltstack/salt/lib/python${SALT_PYTHON_VERSION}/site-packages/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
