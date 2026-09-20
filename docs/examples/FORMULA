@@ -1,0 +1,63 @@
+name: k0s
+os: Debian, Ubuntu, Raspbian, Fedora, openSUSE, Suse SLES, FreeBSD, Arch Linux, Alpine, Gentoo
+os_family: Debian, RedHat, Suse, FreeBSD, Arch, Alpine, Gentoo
+version: 0.1.0
+minimum_version: 3006
+maximum_version: 3009
+description: Installs and manages k0s — a lightweight, self-contained Kubernetes distribution
+top_level_dir: k0s
+
+dependencies:
+  - name: bar
+    version: ">=1.0.0"
+    url: https://example.com/repo/
+
+filtered_args:
+  - no_proxy
+
+maintainers:
+  - name: SomeBlackMagic
+    email: dev@someblackmagic.com
+    github: SomeBlackMagic
+
+authors:
+  - name: SomeBlackMagic
+
+license: Apache-2.0
+
+website: https://github.com/SomeBlackMagic/salt-k0s-formula
+
+source: https://github.com/SomeBlackMagic/salt-k0s-formula
+
+issues: https://github.com/SomeBlackMagic/salt-k0s-formula/issues
+
+summary: |
+  Salt formula for deploying and managing k0s Kubernetes clusters.
+
+  Supports single-node, controller, and worker roles. Handles binary
+  installation, k0s.yaml config generation, systemd unit creation via
+  `k0s install controller / worker`, service lifecycle management, worker
+  join-token generation, and post-cluster Kubernetes manifest application
+  with optional Jinja2 template rendering and kubectl wait conditions.
+
+  Supported architectures: amd64, arm64, aarch64.
+
+  Custom state modules provided:
+    - k0s_controller — installs the controller systemd unit
+    - k0s_worker     — installs the worker systemd unit
+    - k0s_config     — generates k0s.yaml via `k0s config create`
+    - k0s_token      — creates and caches a worker join token
+    - k0s_cluster    — waits for the cluster to become operational
+    - k0s_manifest   — applies Kubernetes manifests with optional wait conditions
+
+  Sync custom modules before first apply:
+    salt '<minion>' saltutil.sync_states
+
+  Minimal single-node example:
+
+    k0s:
+      role: single
+      version: 'v1.30.2+k0s.0'
+
+  See docs/ for full pillar reference, quickstart guide, state descriptions,
+  and operational procedures.

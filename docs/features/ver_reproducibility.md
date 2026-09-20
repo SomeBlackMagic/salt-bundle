@@ -12,8 +12,8 @@ spm provides **partial reproducibility**. Installing the same named version of a
 
 salt-bundle provides **full reproducibility** as a design goal. The combination of the lock file and SHA256 digest verification makes deployments bit-for-bit reproducible:
 
-1. `salt-bundle project update` resolves constraints, selects the best matching version, records the exact version and `sha256:<hex>` digest in `.salt-dependencies.lock`.
+1. `salt-bundle project update` resolves constraints, selects the best matching version, records the exact version and `sha256:<hex>` digest in `Saltfile.lock`.
 2. `salt-bundle project install` reads the lock file, downloads each package, and verifies the digest via `verify_digest()` in `utils/hashing.py` before extracting. If the digest does not match, the download is rejected and the cached file is deleted.
 3. The download cache in `~/.cache/salt-bundle/packages/` uses the digest hash as the cache key (`{digest_hash}.tgz`), so a cached file is never confused with a different version.
 
-Any environment that has the same `.salt-dependencies.lock` file and access to the configured repositories will produce an identical vendor directory, regardless of when the install is run or what other versions have been published since.
+Any environment that has the same `Saltfile.lock` file and access to the configured repositories will produce an identical vendor directory, regardless of when the install is run or what other versions have been published since.

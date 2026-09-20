@@ -1,0 +1,61 @@
+name: k0s
+version: 0.1.0
+description: Custom Salt modules for deploying and managing k0s Kubernetes clusters
+
+# --- Salt compatibility ---
+minimum_version: 3006
+maximum_version: 3009
+
+# --- Entry point: откуда утилита берёт модули ---
+# Структура пакета определяет типы автоматически:
+#   _modules/   → execution modules
+#   _states/    → state modules
+#   _grains/    → grains
+#   _beacons/   → beacons
+#   _engines/   → engines
+#   _runners/   → runners
+#   _returners/ → returners
+#   _pillars/   → external pillars
+#   _proxy/     → proxy modules
+#   _output/    → output modules
+#   _renderers/ → renderers
+#   ...
+# Утилита сканирует эти папки и регистрирует их в Salt core.
+
+# --- Python-зависимости ---
+python_requires:
+  - name: requests
+    version: ">=2.28.0"
+  - name: pyyaml
+
+# --- Зависимости от других extensions ---
+dependencies:
+  - name: systemd
+    version: ">=0.2.0"
+
+# --- Конфликты (опционально) ---
+conflicts:
+  - name: k0s-legacy
+    reason: "Provides overlapping state modules for k0s"
+
+# --- Метаданные ---
+maintainers:
+  - name: SomeBlackMagic
+    email: dev@someblackmagic.com
+    github: SomeBlackMagic
+
+authors:
+  - name: SomeBlackMagic
+
+license: Apache-2.0
+
+website: https://github.com/SomeBlackMagic/saltext-k0s
+source: https://github.com/SomeBlackMagic/saltext-k0s
+issues: https://github.com/SomeBlackMagic/saltext-k0s/issues
+
+summary: |
+  Provides custom Salt state and execution modules for k0s:
+    - k0s_controller — installs controller systemd unit
+    - k0s_worker     — installs worker systemd unit
+    - k0s_config     — generates k0s.yaml
+    - k0s_token      — creates worker join tokens

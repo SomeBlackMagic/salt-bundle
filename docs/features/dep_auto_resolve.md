@@ -12,7 +12,7 @@ spm has **partial automatic dependency resolution**. The `FORMULA` file supports
 
 salt-bundle implements **fully automatic dependency resolution** in the `update` command (`cli/project/update.py`). The resolution algorithm works as follows:
 
-1. A `pending` list is initialized from the `dependencies` in `.salt-dependencies.yaml`.
+1. A `pending` list is initialized from the `dependencies` in `Saltfile`.
 2. All configured repository indexes are pre-fetched (via `repository.fetch_index()` or `repository.fetch_index_from_path_repo()`).
 3. For each item in `pending`, `parse_dependency_name()` splits the key into an optional repository name and a package name. If a repository is specified, only that repository is searched; otherwise all repositories are tried in order.
 4. `resolver.resolve_version(constraint, candidates)` selects the best matching `IndexEntry` from the repository index.

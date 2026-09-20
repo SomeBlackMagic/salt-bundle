@@ -1,198 +1,136 @@
-"""Resolve and update project dependencies."""
+"""Resolve dependencies declared in Saltfile."""
 
 import subprocess
 import sys
 
 import click
 
-from salt_bundle import config, lockfile, repository, resolver, vendor
-from salt_bundle.utils.dependency import parse_dependency_name
+from salt_bundle.config import load_user_config
+from salt_bundle.dependencies import lockfile, resolver
+from salt_bundle.dependencies.index import download_package, fetch_index
+from salt_bundle.dependencies.saltfile import load_saltfile
+from salt_bundle.storage import vendor
+
+
+def _load_index(source: str, indexes: dict[str, object]) -> object:
+    if source not in indexes:
+        indexes[source] = fetch_index(source)
+    return indexes[source]
 
 
 @click.command()
 @click.pass_context
 def update(ctx):
-    """Resolve dependencies and update lock file.
-
-    Resolves all formula dependencies from .salt-dependencies.yaml by:
-    - Querying configured repositories for available versions
-    - Selecting versions that satisfy version constraints
-    - Creating or updating .salt-dependencies.lock with resolved versions
-    - Installing resolved packages to vendor directory
-    - Syncing Salt extensions
-
-    Dependency resolution:
-    - Searches all configured repositories (project + user)
-    - Can specify repository: "repo/package" or search all: "package"
-    - Resolves version constraints (e.g., ">=1.0.0", "~1.2.0")
-    - Fails if any dependency cannot be resolved
-
-    Use this command when:
-    - Adding new dependencies to .salt-dependencies.yaml
-    - Updating existing dependencies to newer versions
-    - Initial project setup (creates lock file)
-
-    Exit codes:
-    - 0: Dependencies resolved and installed successfully
-    - 1: Resolution or installation failed
-
-    Examples:
-
-        # Resolve and install all dependencies
-        salt-bundle project update
-
-        # Update in specific project directory
-        salt-bundle project update -C /path/to/project
-
-    See also:
-    - 'salt-bundle project install' to install from existing lock file
-    - 'salt-bundle repo add' to configure repositories
-    """
+    """Resolve Saltfile dependencies, write Saltfile.lock, and install packages."""
     try:
-        project_dir = ctx.obj['PROJECT_DIR']
-
-        # Load project config
+        project_dir = ctx.obj["PROJECT_DIR"]
         try:
-            proj_config = config.load_project_config(project_dir)
+            saltfile = load_saltfile(project_dir)
         except FileNotFoundError:
-            click.echo("Error: .salt-dependencies.yaml not found. Run 'salt-bundle project init' first.", err=True)
+            click.echo("Error: Saltfile not found. Run 'salt-bundle project init' first.", err=True)
             sys.exit(1)
 
-        vendor_dir = vendor.get_vendor_dir(project_dir, proj_config.vendor_dir)
+        vendor_dir = vendor.get_vendor_dir(project_dir, saltfile.vendor_dir)
         vendor.ensure_vendor_dir(vendor_dir)
-
-        # Get all repositories (project + user)
-        user_config = config.load_user_config()
-        all_repos = proj_config.repositories + user_config.repositories
-
-        if not all_repos:
-            click.echo("Warning: No repositories configured", err=True)
-
-        # Resolve dependencies
-        click.echo("Resolving dependencies...")
+        user_repositories = load_user_config().repositories
+        indexes: dict[str, object] = {}
+        pending = [
+            (dependency.name, dependency.version or ">=0.0.0", dependency.source, None)
+            for dependency in saltfile.dependencies
+        ]
+        resolved_packages = {}
         lock = lockfile.LockFile()
-        
-        # Track pending dependencies: (package_key, version_constraint)
-        pending = list(proj_config.dependencies.items())
-        resolved_packages = {}  # name -> IndexEntry
 
-        # Fetch all indexes first to speed up
-        repo_indexes = {}
-        for repo in all_repos:
-            try:
-                if repo.type == "path":
-                    repo_indexes[repo.name] = (repo, repository.fetch_index_from_path_repo(repo.url))
-                else:
-                    repo_indexes[repo.name] = (repo, repository.fetch_index(repo.url))
-            except Exception as e:
-                click.echo(f"Warning: Failed to fetch from {repo.name}: {e}", err=True)
-
+        click.echo("Resolving dependencies...")
         while pending:
-            dep_key, dep_constraint = pending.pop(0)
-            
-            # Parse dependency format: "repo/package" or "package"
-            try:
-                repo_name, pkg_name = parse_dependency_name(dep_key)
-            except ValueError as e:
-                click.echo(f"Error: {e}", err=True)
-                sys.exit(1)
-
-            if pkg_name in resolved_packages:
-                # TODO: Check version compatibility
+            package_name, constraint, source, parent_type = pending.pop(0)
+            if package_name in resolved_packages:
                 continue
 
-            # Select repositories to search
-            if repo_name:
-                if repo_name not in repo_indexes:
-                    click.echo(f"Error: Repository '{repo_name}' not found or unreachable", err=True)
-                    sys.exit(1)
-                repos_to_try = [repo_indexes[repo_name]]
-                click.echo(f"Resolving {pkg_name} from {repo_name}...")
-            else:
-                repos_to_try = list(repo_indexes.values())
-                click.echo(f"Resolving {pkg_name}...")
-
-            resolved = None
-            for repo_cfg, idx in repos_to_try:
-                if pkg_name in idx.packages:
-                    resolved_entry = resolver.resolve_version(dep_constraint, idx.packages[pkg_name])
-                    if resolved_entry:
-                        lockfile.add_locked_dependency(
-                            lock,
-                            pkg_name,
-                            resolved_entry.version,
-                            repo_cfg.name,
-                            resolved_entry.url,
-                            resolved_entry.digest,
-                            path=resolved_entry.url if repo_cfg.type == "path" else None,
-                        )
-                        resolved_packages[pkg_name] = resolved_entry
-                        resolved = resolved_entry
-                        click.echo(f"  ✓ {pkg_name} {resolved_entry.version} from {repo_cfg.name}")
-                        
-                        # Add transitive dependencies to pending
-                        for trans_dep in resolved_entry.dependencies:
-                            pending.append((trans_dep.name, trans_dep.version))
-                        break
-
-            if not resolved:
-                click.echo(f"Error: Could not resolve dependency: {dep_key} {dep_constraint}", err=True)
+            sources = [source] if source else [item.url for item in user_repositories]
+            if not sources:
+                click.echo(f"Error: No index.yaml source configured for {package_name}", err=True)
                 sys.exit(1)
 
-        # Save lock file
-        lockfile.save_lockfile(lock, project_dir)
-        click.echo(f"\nLock file updated: {project_dir / '.salt-dependencies.lock'}")
-
-        # Install packages
-        for dep_name, locked_dep in lock.dependencies.items():
-            click.echo(f"Installing {dep_name} {locked_dep.version}...")
-
-            if locked_dep.path is not None:
-                # path-type repository: symlink the local directory
-                vendor.symlink_path_package_to_vendor(locked_dep.path, dep_name, vendor_dir)
-                click.echo(f"  (symlinked from {locked_dep.path})")
-                continue
-
-            # Find repository URL
-            repo_url = None
-            for repo in all_repos:
-                if repo.name == locked_dep.repository:
-                    repo_url = repo.url
+            resolved_entry = None
+            resolved_source = None
+            for candidate_source in sources:
+                try:
+                    index = _load_index(candidate_source, indexes)
+                except Exception as error:
+                    click.echo(f"Warning: Failed to fetch index from {candidate_source}: {error}", err=True)
+                    continue
+                if package_name not in index.packages:
+                    continue
+                candidate = resolver.resolve_version(constraint, index.packages[package_name])
+                if candidate is not None:
+                    resolved_entry = candidate
+                    resolved_source = candidate_source
                     break
 
-            if not repo_url:
-                click.echo(f"Error: Repository not found: {locked_dep.repository}", err=True)
+            if resolved_entry is None or resolved_source is None:
+                click.echo(f"Error: Could not resolve dependency: {package_name} {constraint}", err=True)
+                sys.exit(1)
+            if parent_type == "extension" and resolved_entry.type == "formula":
+                click.echo(
+                    f"Error: Extension dependency {package_name} cannot resolve to a formula",
+                    err=True,
+                )
                 sys.exit(1)
 
-            # Download package
-            archive_path = repository.download_package(
-                locked_dep.url,
-                repo_url,
-                locked_dep.digest
+            lockfile.add_locked_dependency(
+                lock,
+                package_name,
+                resolved_entry.version,
+                resolved_source,
+                resolved_entry.url,
+                resolved_entry.digest,
+                package_type=resolved_entry.type,
             )
+            resolved_packages[package_name] = resolved_entry
+            click.echo(f"  ✓ {package_name} {resolved_entry.version} from {resolved_source}")
+            for dependency in resolved_entry.dependencies:
+                pending.append(
+                    (
+                        dependency.name,
+                        dependency.version or ">=0.0.0",
+                        dependency.url or resolved_source,
+                        resolved_entry.type,
+                    )
+                )
 
-            # Install to vendor
-            vendor.install_package_to_vendor(archive_path, dep_name, vendor_dir)
+        lockfile.save_lockfile(lock, project_dir)
+        click.echo(f"Lock file updated: {project_dir / 'Saltfile.lock'}")
+        for package_name, locked_dependency in lock.dependencies.items():
+            click.echo(f"Installing {package_name} {locked_dependency.version}...")
+            archive_path = download_package(
+                locked_dependency.url,
+                locked_dependency.repository,
+                locked_dependency.digest,
+            )
+            vendor.install_package_to_vendor(archive_path, package_name, vendor_dir)
 
-        click.echo("\nDependencies updated and installed!")
-
-        # Sync Salt extensions
-        try:
-            click.echo("\nSyncing Salt extensions...")
-            result = subprocess.run(['salt-call', '--local', 'saltutil.sync_all'],
-                                   capture_output=True, text=True, check=False)
-            if result.returncode == 0:
-                click.echo("✓ Salt extensions synced")
-            else:
-                click.echo(f"Warning: Failed to sync Salt extensions: {result.stderr}", err=True)
-        except FileNotFoundError:
-            click.echo("Warning: salt-call not found, skipping extension sync", err=True)
-        except Exception as e:
-            click.echo(f"Warning: Failed to sync Salt extensions: {e}", err=True)
-
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-        if ctx.obj.get('DEBUG'):
+        _sync_salt_extensions()
+        click.echo("Dependencies updated and installed!")
+    except Exception as error:
+        click.echo(f"Error: {error}", err=True)
+        if ctx.obj.get("DEBUG"):
             import traceback
             traceback.print_exc()
         sys.exit(1)
+
+
+def _sync_salt_extensions() -> None:
+    try:
+        result = subprocess.run(
+            ["salt-call", "--local", "saltutil.sync_all"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            click.echo("✓ Salt extensions synced")
+        else:
+            click.echo(f"Warning: Failed to sync Salt extensions: {result.stderr}", err=True)
+    except FileNotFoundError:
+        click.echo("Warning: salt-call not found, skipping extension sync", err=True)

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from salt_bundle import repository
+from salt_bundle.dependencies import index as repository
 
 
 @click.command()
@@ -52,7 +52,7 @@ def index(ctx, directory, output_dir, base_url):
 
     See also:
     - 'salt-bundle repo release' to automate packaging and indexing
-    - 'salt-bundle formula pack' to create package archives
+    - 'salt-bundle package pack' to create package archives
     """
     try:
         repo_dir = Path(directory)

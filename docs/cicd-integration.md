@@ -24,7 +24,7 @@ on:
   push:
     branches: [main, master]
     paths:
-      - '.saltbundle.yaml'
+      - 'FORMULA'
       - '**.sls'
       - '**.jinja'
       - 'files/**'
@@ -207,9 +207,9 @@ jobs:
         run: |
           python3 << 'EOF'
           import yaml
-          from salt_bundle.models.package_models import PackageMeta
+          from salt_bundle.packaging.models import PackageMeta
 
-          with open('.saltbundle.yaml') as f:
+          with open('FORMULA') as f:
               data = yaml.safe_load(f)
               meta = PackageMeta(**data)
               print(f"✓ Valid: {meta.name} {meta.version}")
@@ -317,7 +317,7 @@ test:
     - salt-call --local --file-root=. state.show_sls $(basename $(pwd))
   only:
     changes:
-      - .saltbundle.yaml
+      - FORMULA
       - "*.sls"
 
 release:
@@ -338,7 +338,7 @@ release:
     refs:
       - main
     changes:
-      - .saltbundle.yaml
+      - FORMULA
       - "*.sls"
 
 pages:
@@ -569,7 +569,7 @@ pipeline {
     path: |
       ~/.cache/salt-bundle
       vendor/
-    key: ${{ runner.os }}-salt-bundle-${{ hashFiles('.salt-dependencies.lock') }}
+    key: ${{ runner.os }}-salt-bundle-${{ hashFiles('Saltfile.lock') }}
     restore-keys: |
       ${{ runner.os }}-salt-bundle-
 ```
@@ -615,8 +615,8 @@ secrets/
 - name: Bump Version
   run: |
     VERSION=$(git describe --tags --abbrev=0 | awk -F. '{$NF+=1; print $0}' OFS=.)
-    sed -i "s/version: .*/version: $VERSION/" .saltbundle.yaml
-    git add .saltbundle.yaml
+    sed -i "s/version: .*/version: $VERSION/" FORMULA
+    git add FORMULA
     git commit -m "Bump version to $VERSION"
     git tag "$VERSION"
     git push --tags

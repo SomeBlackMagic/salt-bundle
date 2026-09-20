@@ -7,8 +7,8 @@ import shutil
 
 from salt_bundle.cli.project.update import update
 from salt_bundle.cli.project.install import install
-from salt_bundle.models.index_models import Index, IndexEntry
-from salt_bundle.models.package_models import PackageDependency
+from salt_bundle.dependencies.index_models import Index, IndexEntry
+from salt_bundle.packaging.models import FormulaDependency
 from click.testing import CliRunner
 
 class TestProjectCommands(unittest.TestCase):
@@ -27,21 +27,19 @@ class TestProjectCommands(unittest.TestCase):
         self.user_config_patcher.stop()
         shutil.rmtree(self.test_dir)
 
-    @patch('salt_bundle.repository.fetch_index')
-    @patch('salt_bundle.repository.download_package')
-    @patch('salt_bundle.vendor.install_package_to_vendor')
+    @patch('salt_bundle.cli.project.update.fetch_index')
+    @patch('salt_bundle.cli.project.update.download_package')
+    @patch('salt_bundle.storage.vendor.install_package_to_vendor')
     @patch('subprocess.run')
     def test_update_success_with_transitive(self, mock_run, mock_install_vendor, mock_download, mock_fetch_index):
         """Positive scenario: successful resolution and installation with transitive dependencies."""
         # Project setup
-        deps_yaml = self.project_dir / ".salt-dependencies.yaml"
+        deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
-project: test-project
-repositories:
-  - name: main
-    url: http://repo.example.com
 dependencies:
-  foo: "^1.0.0"
+  - name: foo
+    version: "^1.0.0"
+    source: http://repo.example.com
 """)
 
         # Repository index setup
@@ -50,7 +48,7 @@ dependencies:
             version="1.0.0",
             url="foo-1.0.0.tgz",
             digest="sha256:foo_hash",
-            dependencies=[PackageDependency(name="bar", version=">=0.5.0")]
+            dependencies=[FormulaDependency(name="bar", version=">=0.5.0")]
         )
         bar_entry = IndexEntry(
             version="0.6.0",
@@ -70,28 +68,26 @@ dependencies:
         result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
         
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("✓ foo 1.0.0 from main", result.output)
-        self.assertIn("✓ bar 0.6.0 from main", result.output)
+        self.assertIn("✓ foo 1.0.0 from http://repo.example.com", result.output)
+        self.assertIn("✓ bar 0.6.0 from http://repo.example.com", result.output)
         
         # Check lock file creation
-        lock_file = self.project_dir / ".salt-dependencies.lock"
+        lock_file = self.project_dir / "Saltfile.lock"
         self.assertTrue(lock_file.exists())
         
         # Check download and install calls
         self.assertEqual(mock_download.call_count, 2)
         self.assertEqual(mock_install_vendor.call_count, 2)
 
-    @patch('salt_bundle.repository.fetch_index')
+    @patch('salt_bundle.cli.project.update.fetch_index')
     def test_update_fail_unresolved_dependency(self, mock_fetch_index):
         """Negative scenario: unable to resolve dependency."""
-        deps_yaml = self.project_dir / ".salt-dependencies.yaml"
+        deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
-project: test-project
-repositories:
-  - name: main
-    url: http://repo.example.com
 dependencies:
-  nonexistent: "1.0.0"
+  - name: nonexistent
+    version: "1.0.0"
+    source: http://repo.example.com
 """)
         
         mock_index = Index(generated="2023-01-01T00:00:00", packages={})
@@ -102,18 +98,54 @@ dependencies:
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Error: Could not resolve dependency: nonexistent 1.0.0", result.output)
 
-    @patch('salt_bundle.repository.fetch_index')
-    @patch('salt_bundle.repository.download_package')
+    @patch('salt_bundle.cli.project.update.fetch_index')
+    def test_update_rejects_extension_dependency_on_formula(self, mock_fetch_index):
+        (self.project_dir / "Saltfile").write_text(
+            """dependencies:
+  - name: extension
+    version: "1.0.0"
+    source: http://repo.example.com
+""",
+            encoding="utf-8",
+        )
+        mock_fetch_index.return_value = Index(
+            generated="2023-01-01T00:00:00",
+            packages={
+                "extension": [
+                    IndexEntry(
+                        version="1.0.0",
+                        url="extension-1.0.0.tgz",
+                        digest="sha256:extension_hash",
+                        type="extension",
+                        dependencies=[FormulaDependency(name="formula", version="1.0.0")],
+                    )
+                ],
+                "formula": [
+                    IndexEntry(
+                        version="1.0.0",
+                        url="formula-1.0.0.tgz",
+                        digest="sha256:formula_hash",
+                        type="formula",
+                    )
+                ],
+            },
+        )
+
+        result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("cannot resolve to a formula", result.output)
+
+    @patch('salt_bundle.cli.project.update.fetch_index')
+    @patch('salt_bundle.cli.project.update.download_package')
     def test_update_fail_digest_mismatch(self, mock_download, mock_fetch_index):
         """Negative scenario: error on digest mismatch."""
-        deps_yaml = self.project_dir / ".salt-dependencies.yaml"
+        deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
-project: test-project
-repositories:
-  - name: main
-    url: http://repo.example.com
 dependencies:
-  foo: "1.0.0"
+  - name: foo
+    version: "1.0.0"
+    source: http://repo.example.com
 """)
         
         foo_entry = IndexEntry(
@@ -131,28 +163,26 @@ dependencies:
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Error: Digest mismatch for foo-1.0.0.tgz", result.output)
 
-    @patch('salt_bundle.repository.download_package')
-    @patch('salt_bundle.vendor.install_package_to_vendor')
+    @patch('salt_bundle.cli.project.install.download_package')
+    @patch('salt_bundle.storage.vendor.install_package_to_vendor')
     @patch('subprocess.run')
     def test_install_success_from_lock(self, mock_run, mock_install_vendor, mock_download):
         """Positive scenario: installation from existing lock file."""
         # Project setup
-        deps_yaml = self.project_dir / ".salt-dependencies.yaml"
+        deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
-project: test-project
-repositories:
-  - name: main
-    url: http://repo.example.com
 dependencies:
-  foo: "1.0.0"
+  - name: foo
+    version: "1.0.0"
+    source: http://repo.example.com
 """)
         
-        lock_file = self.project_dir / ".salt-dependencies.lock"
+        lock_file = self.project_dir / "Saltfile.lock"
         lock_file.write_text("""
 dependencies:
   foo:
     version: 1.0.0
-    repository: main
+    repository: http://repo.example.com
     url: foo-1.0.0.tgz
     digest: sha256:foo_hash
 """)
@@ -169,13 +199,13 @@ dependencies:
 
     def test_install_fail_no_lock(self):
         """Negative scenario: running install without lock file."""
-        deps_yaml = self.project_dir / ".salt-dependencies.yaml"
-        deps_yaml.write_text("project: test-project")
+        deps_yaml = self.project_dir / "Saltfile"
+        deps_yaml.write_text("dependencies: []")
         
         result = self.runner.invoke(install, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
         
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("Error: .salt-dependencies.lock not found.", result.output)
+        self.assertIn("Error: Saltfile.lock not found.", result.output)
 
 if __name__ == '__main__':
     unittest.main()

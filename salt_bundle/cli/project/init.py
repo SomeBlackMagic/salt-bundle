@@ -1,12 +1,11 @@
 """Initialize Salt project configuration."""
 
 import sys
-from pathlib import Path
 
 import click
 
-from salt_bundle import config
-from salt_bundle.models.config_models import ProjectConfig
+from salt_bundle.dependencies.saltfile import save_saltfile
+from salt_bundle.dependencies.saltfile_models import SaltfileConfig
 
 
 @click.command()
@@ -15,7 +14,7 @@ from salt_bundle.models.config_models import ProjectConfig
 def init(ctx, force):
     """Initialize a new Salt project with dependency management.
 
-    Creates a .salt-dependencies.yaml configuration file for managing
+    Creates a Saltfile configuration file for managing
     formula dependencies, repositories, and vendoring settings.
 
     The project configuration includes:
@@ -26,7 +25,7 @@ def init(ctx, force):
 
     After initialization, use:
     - 'salt-bundle repo add' to add formula repositories
-    - Edit .salt-dependencies.yaml to add formula dependencies
+    - Edit Saltfile to add package dependencies
     - 'salt-bundle project install' to install dependencies
 
     Examples:
@@ -41,26 +40,16 @@ def init(ctx, force):
         salt-bundle project init -C /path/to/project
     """
     project_dir = ctx.obj['PROJECT_DIR']
-    config_file = project_dir / '.salt-dependencies.yaml'
+    config_file = project_dir / 'Saltfile'
 
     if config_file.exists() and not force:
         click.echo(f"Error: {config_file} already exists. Use --force to overwrite.", err=True)
         sys.exit(1)
 
-    name = click.prompt("Project name", default="my-project")
-    version = click.prompt("Version", default="0.1.0")
-
-    project_config = ProjectConfig(
-        project=name,
-        version=version,
-        vendor_dir="vendor",
-        repositories=[],
-        dependencies={}
-    )
-
-    config.save_project_config(project_config, project_dir)
-    click.echo(f"Created project configuration: {config_file}")
+    project_config = SaltfileConfig(vendor_dir="vendor")
+    save_saltfile(project_config, project_dir)
+    click.echo(f"Created Saltfile: {config_file}")
     click.echo("\nNext steps:")
-    click.echo("  1. Add repositories: salt-bundle repo add --name <name> --url <url>")
-    click.echo("  2. Add dependencies to .salt-dependencies.yaml")
+    click.echo("  1. Add dependencies to Saltfile")
+    click.echo("     Each source must point to a repository containing index.yaml")
     click.echo("  3. Install dependencies: salt-bundle project install")

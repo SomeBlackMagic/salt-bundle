@@ -11,12 +11,12 @@ Salt Bundle is a package manager for Salt formulas, similar to pip, npm, or Helm
 
 ### For Formula Publishers
 - [Publishing Guide](publishing-guide.md) - How to create and publish formulas
-- [Formula Configuration](formula-configuration.md) - `.saltbundle.yaml` format for formulas
+- [Formula Configuration](formula-configuration.md) - `FORMULA` format for formulas
 - [Repository Setup](repository-setup.md) - Setting up your own repository
 
 ### For Formula Consumers
 - [Installation Guide](installation-guide.md) - Installing and using formulas
-- [Project Configuration](project-configuration.md) - `.saltbundle.yaml` format for projects
+- [Project Configuration](project-configuration.md) - `FORMULA` format for projects
 - [Version Constraints](version-constraints.md) - Semantic versioning and dependency resolution
 
 ### Reference
@@ -53,12 +53,12 @@ Salt Bundle provides:
 ```bash
 # Initialize formula metadata
 cd my-formula
-salt-bundle formula init
+salt-bundle package init
 
-# Edit .saltbundle.yaml with your metadata
+# Edit FORMULA with your metadata
 
 # Pack the formula
-salt-bundle formula pack
+salt-bundle package pack
 # Creates: my-formula-1.0.0.tgz
 
 # Generate repository index
@@ -80,12 +80,14 @@ salt-bundle project init
 # Add repository (global config)
 salt-bundle repo add --name main --url https://example.com/salt-repo/
 
-# Edit .salt-dependencies.yaml to add dependencies
+# Edit Saltfile to add dependencies
 # dependencies:
-#   my-formula: "^1.0.0"
+#   - name: my-formula
+#     version: "^1.0.0"
+#     source: https://example.com/salt-repo/
 
-# Install dependencies
-salt-bundle project install
+# Resolve and install dependencies
+salt-bundle project update
 # Installs to: vendor/my-formula/
 
 # Use in Salt
@@ -121,7 +123,7 @@ salt-bundle --help
 ### For Publishers
 
 1. Create a formula with Salt states
-2. Add `.saltbundle.yaml` metadata
+2. Add `FORMULA` metadata
 3. Pack into versioned archive
 4. Publish to repository
 5. Update repository index
@@ -130,7 +132,7 @@ See [Publishing Guide](publishing-guide.md) for details.
 
 ### For Consumers
 
-1. Initialize project with `.saltbundle.yaml`
+1. Initialize project with `FORMULA`
 2. Add repositories
 3. Declare dependencies with version constraints
 4. Install dependencies (creates lock file)
@@ -172,10 +174,10 @@ Publishers                     Repository                    Consumers
 
 ### Dependency Management
 
-- Declare dependencies in `.saltbundle.yaml`
+- Declare dependencies in `FORMULA`
 - Automatic resolution across repositories
 - Lock file for reproducible installations
-- Repository-specific dependencies: `repo/package`
+- Per-dependency `source` repositories containing `index.yaml`
 
 ### Repository Management
 
@@ -193,7 +195,7 @@ Publishers                     Repository                    Consumers
 
 ## Configuration Files
 
-### Formula: `.saltbundle.yaml`
+### Formula: `FORMULA`
 
 ```yaml
 name: my-formula
@@ -214,32 +216,28 @@ dependencies:
     version: "^1.0"
 ```
 
-### Project: `.saltbundle.yaml`
+### Project: `Saltfile`
 
 ```yaml
-project: my-infrastructure
-version: 0.1.0
 vendor_dir: vendor
-
-repositories:
-  - name: main
-    url: https://salt-formulas.example.com/
-
 dependencies:
-  nginx: "^2.0.0"
-  mysql: "~5.7"
-  main/redis: ">=6.0,<7.0"
+  - name: nginx
+    version: "^2.0.0"
+    source: https://salt-formulas.example.com/
+  - name: mysql
+    version: "~5.7.0"
 ```
 
-### Lock File: `.salt-dependencies.lock`
+### Lock File: `Saltfile.lock`
 
 ```yaml
 dependencies:
   nginx:
     version: 2.1.0
-    repository: main
+    repository: https://salt-formulas.example.com/
     url: https://salt-formulas.example.com/nginx-2.1.0.tgz
     digest: sha256:abc123...
+    type: formula
 ```
 
 ## Common Use Cases
@@ -249,13 +247,13 @@ dependencies:
 ```bash
 formulas/
   ├── nginx/
-  │   ├── .saltbundle.yaml
+  │   ├── FORMULA
   │   └── init.sls
   ├── mysql/
-  │   ├── .saltbundle.yaml
+  │   ├── FORMULA
   │   └── init.sls
   └── redis/
-      ├── .saltbundle.yaml
+      ├── FORMULA
       └── init.sls
 
 # Release all formulas
@@ -298,7 +296,7 @@ After `pip install salt-bundle`, Salt automatically discovers formulas in your p
 # Install salt-bundle
 pip install salt-bundle
 
-# Navigate to project with .saltbundle.yaml
+# Navigate to project with FORMULA
 cd my-project
 
 # Run Salt commands - formulas auto-discovered from vendor/
@@ -311,7 +309,7 @@ salt-call pillar.get saltbundle
 
 **How it works:**
 1. Salt automatically loads the plugin via entry points
-2. Plugin searches for `.saltbundle.yaml` in current directory
+2. Plugin searches for `FORMULA` in current directory
 3. Reads `vendor_dir` from config
 4. Automatically adds formulas to `file_roots`
 

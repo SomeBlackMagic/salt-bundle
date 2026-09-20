@@ -33,7 +33,7 @@ You'll be prompted for:
 - **Description**: Optional description
 - **Salt compatibility**: Min/max Salt versions
 
-This creates `.saltbundle.yaml`:
+This creates `FORMULA`:
 
 ```yaml
 name: my-formula
@@ -53,7 +53,7 @@ Your formula should have at least one `.sls` file:
 
 ```
 my-formula/
-├── .saltbundle.yaml
+├── FORMULA
 ├── init.sls           # Required: main state file
 ├── install.sls        # Optional: additional states
 ├── config.sls
@@ -94,7 +94,7 @@ my-formula-service:
 
 ### Step 3: Edit Metadata
 
-Edit `.saltbundle.yaml` to add more details:
+Edit `FORMULA` to add more details:
 
 ```yaml
 name: my-formula
@@ -131,7 +131,7 @@ See [Formula Configuration](formula-configuration.md) for complete format.
 
 ### Required Files
 
-- **`.saltbundle.yaml`**: Metadata (name, version, dependencies)
+- **`FORMULA`**: Metadata (name, version, dependencies)
 - **`init.sls`** or any `.sls`: At least one Salt state file
 
 ### Optional Components
@@ -161,8 +161,8 @@ temp/
 .idea/
 ```
 
-If `formula_path` is set in `.saltbundle.yaml`, keep `.saltbundleignore` next to
-`.saltbundle.yaml`. Its patterns are matched relative to the formula source directory, not
+If `formula_path` is set in `FORMULA`, keep `.saltbundleignore` next to
+`FORMULA`. Its patterns are matched relative to the formula source directory, not
 relative to the repository root.
 
 ## Packaging
@@ -193,7 +193,7 @@ tar -tzf my-formula-1.0.0.tgz
 ### Version Update Workflow
 
 ```bash
-# 1. Update version in .saltbundle.yaml
+# 1. Update version in FORMULA
 version: 1.0.1
 
 # 2. Pack new version
@@ -330,7 +330,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.saltbundle.yaml'
+      - 'FORMULA'
       - '**.sls'
 
 jobs:
@@ -382,7 +382,7 @@ release:
       - repo/
   only:
     changes:
-      - .saltbundle.yaml
+      - FORMULA
       - "*.sls"
 ```
 
@@ -455,7 +455,7 @@ salt-bundle project init
 salt-bundle repo add --name test --url file:///path/to/repo
 
 # Add dependency
-# .salt-dependencies.yaml:
+# Saltfile:
 # dependencies:
 #   my-formula: "1.0.0"
 
@@ -566,9 +566,9 @@ touch init.sls
 Warning: Failed to process my-formula-1.0.0.tgz: Invalid metadata
 ```
 
-**Solution:** Verify `.saltbundle.yaml` is valid YAML:
+**Solution:** Verify `FORMULA` is valid YAML:
 ```bash
-python3 -c "import yaml; yaml.safe_load(open('.saltbundle.yaml'))"
+python3 -c "import yaml; yaml.safe_load(open('FORMULA'))"
 ```
 
 ## Next Steps

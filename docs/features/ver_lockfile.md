@@ -10,12 +10,12 @@ spm has **no lock file**. Installed package state can be queried with `spm list`
 
 ## salt-bundle
 
-salt-bundle generates and manages a **`.salt-dependencies.lock`** file as a first-class artifact. The file is written by `lockfile.save_lockfile()` in `lockfile.py` and follows the `LockFile` Pydantic model: a YAML file with a single `dependencies` key mapping package names to `LockedDependency` records. Each record contains:
+salt-bundle generates and manages a **`Saltfile.lock`** file as a first-class artifact. The file is written by `lockfile.save_lockfile()` in `lockfile.py` and follows the `LockFile` Pydantic model: a YAML file with a single `dependencies` key mapping package names to `LockedDependency` records. Each record contains:
 
 - `version`: the exact resolved semver string (e.g., `"1.3.2"`)
 - `repository`: the name of the repository from which it was resolved
 - `url`: the exact download URL of the `.tgz` archive
 - `digest`: the SHA256 digest in `sha256:<hex>` format (or `"path"` for local symlink repos)
-- `path`: the absolute filesystem path (only for `type: path` repositories)
+- `repository`: the URL or local path of the repository that supplied the package
 
 The lock file is intended to be committed to version control. `salt-bundle project install` reads it and installs exactly the locked versions without re-running constraint resolution.

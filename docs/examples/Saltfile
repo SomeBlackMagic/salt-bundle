@@ -1,0 +1,23 @@
+# Saltfile — описание зависимостей Salt-проекта
+# Располагается в корне Salt-проекта (рядом с top.sls)
+
+# --- Зависимости ---
+# Тип пакета (formula/extension) определяется автоматически
+# по содержимому пакета (наличие файла FORMULA или EXTENSION)
+dependencies:
+  # из удалённого репозитория
+  - name: k0s
+    version: ">=0.1.0"
+    source: https://github.com/SomeBlackMagic/salt-k0s-formula
+
+  # из локальной папки (для разработки)
+  - name: nginx
+    version: ">=2.0.0"
+    source: /home/user/projects/nginx-formula
+
+  # без source — берётся из индекса
+  - name: systemd
+    version: ">=0.2.0"
+
+  - name: vault
+    version: ">=1.0.0"

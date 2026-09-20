@@ -1,10 +1,10 @@
 # Formula Configuration Reference
 
-Complete reference for `.saltbundle.yaml` configuration in formula packages.
+Complete reference for `FORMULA` configuration in formula packages.
 
 ## Overview
 
-The `.saltbundle.yaml` file in a formula directory defines package metadata, dependencies, and compatibility information.
+The `FORMULA` file in a formula directory defines package metadata, dependencies, and compatibility information.
 
 ## Basic Structure
 
@@ -94,7 +94,7 @@ description: Nginx web server configuration and management
 **Default:** None
 
 Relative path to the directory that contains the actual formula files to package. When omitted,
-the directory containing `.saltbundle.yaml` is packaged.
+the directory containing `FORMULA` is packaged.
 
 Use this when the repository root contains CI files, documentation, tests, or wrapper scripts
 and the Salt formula itself lives in a subdirectory.
@@ -112,7 +112,7 @@ With this layout:
 
 ```text
 my-formula/
-├── .saltbundle.yaml
+├── FORMULA
 ├── .saltbundleignore
 ├── README.md
 └── formula/
@@ -127,8 +127,8 @@ Set:
 formula_path: formula
 ```
 
-The archive will contain `init.sls`, `_modules/mymod.py`, and `.saltbundle.yaml` at the archive
-root. `.saltbundleignore` is still read from the directory containing `.saltbundle.yaml`, but its
+The archive will contain `init.sls`, `_modules/mymod.py`, and `FORMULA` at the archive
+root. `.saltbundleignore` is still read from the directory containing `FORMULA`, but its
 patterns are matched relative to `formula_path`.
 
 #### `maintainers`
@@ -353,7 +353,7 @@ Example project layout:
 
 ```text
 my-formula/
-├── .saltbundle.yaml
+├── FORMULA
 ├── .saltbundleignore
 ├── README.md
 ├── ci/
@@ -443,9 +443,9 @@ salt-bundle formula pack
 # Or use Python
 python3 << 'EOF'
 import yaml
-from salt_bundle.models.package_models import PackageMeta
+from salt_bundle.packaging.models import PackageMeta
 
-with open('.saltbundle.yaml') as f:
+with open('FORMULA') as f:
     data = yaml.safe_load(f)
     meta = PackageMeta(**data)
     print(f"Valid: {meta.name} {meta.version}")
@@ -616,7 +616,7 @@ dependencies:
     version: ^1.0.0
     repository: https://charts.example.com/
 
-# Salt Bundle .saltbundle.yaml
+# Salt Bundle FORMULA
 name: nginx
 version: 2.1.0
 description: Nginx web server
@@ -626,12 +626,13 @@ maintainers:
 dependencies:
   - name: common
     version: "^1.0.0"
-# Note: repository is configured separately in project config
+# A dependency may set `url` to the repository containing its index.yaml.
+# Otherwise it inherits the source selected for this package.
 ```
 
 ### From Formula Metadata
 
-If you have existing formula metadata in different format, convert to `.saltbundle.yaml`:
+If you have existing formula metadata in different format, convert to `FORMULA`:
 
 ```yaml
 # Old metadata format
@@ -639,7 +640,7 @@ formula:
   name: nginx
   version: 2.1.0
 
-# New .saltbundle.yaml
+# New FORMULA
 name: nginx
 version: 2.1.0
 ```

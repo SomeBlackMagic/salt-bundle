@@ -7,10 +7,10 @@ import click
 
 # Handle both package import and direct execution
 try:
-    from .formula import init as formula_init_cmd
-    from .formula import pack as formula_pack_cmd
-    from .formula import verify as formula_verify_cmd
-    from .formula import sync as formula_sync_cmd
+    from .package import init as package_init_cmd
+    from .package import pack as package_pack_cmd
+    from .package import verify as package_verify_cmd
+    from .package import sync as package_sync_cmd
     from .project import init as project_init_cmd
     from .project import install as project_install_cmd
     from .project import update as project_update_cmd
@@ -21,10 +21,10 @@ try:
 except ImportError:
     # Direct execution - add parent directory to path
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from salt_bundle.cli.formula import init as formula_init_cmd
-    from salt_bundle.cli.formula import pack as formula_pack_cmd
-    from salt_bundle.cli.formula import verify as formula_verify_cmd
-    from salt_bundle.cli.formula import sync as formula_sync_cmd
+    from salt_bundle.cli.package import init as package_init_cmd
+    from salt_bundle.cli.package import pack as package_pack_cmd
+    from salt_bundle.cli.package import verify as package_verify_cmd
+    from salt_bundle.cli.package import sync as package_sync_cmd
     from salt_bundle.cli.project import init as project_init_cmd
     from salt_bundle.cli.project import install as project_install_cmd
     from salt_bundle.cli.project import update as project_update_cmd
@@ -41,7 +41,7 @@ except ImportError:
               help='Project directory (default: current directory)')
 @click.pass_context
 def cli(ctx, debug, quiet, project_dir):
-    """Salt package manager - manage formulas, projects, and repositories."""
+    """Salt package manager - manage packages, projects, and repositories."""
     ctx.ensure_object(dict)
     ctx.obj['DEBUG'] = debug
     ctx.obj['QUIET'] = quiet
@@ -49,8 +49,8 @@ def cli(ctx, debug, quiet, project_dir):
 
 
 @cli.group()
-def formula():
-    """Manage Salt formulas - initialize, package, verify, and sync."""
+def package():
+    """Manage Salt packages - initialize, package, verify, and sync."""
     pass
 
 
@@ -66,11 +66,11 @@ def repo():
     pass
 
 
-# Register formula commands
-formula.add_command(formula_init_cmd.init)
-formula.add_command(formula_pack_cmd.pack)
-formula.add_command(formula_verify_cmd.verify)
-formula.add_command(formula_sync_cmd.sync)
+# Register package commands
+package.add_command(package_init_cmd.init)
+package.add_command(package_pack_cmd.pack)
+package.add_command(package_verify_cmd.verify)
+package.add_command(package_sync_cmd.sync)
 
 # Register project commands
 project.add_command(project_init_cmd.init)

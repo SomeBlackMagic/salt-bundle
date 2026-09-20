@@ -16,7 +16,7 @@ def vendor(ctx):
     ensuring reproducible deployments across different environments.
 
     Workflow:
-    - Reads .salt-dependencies.lock for exact versions
+    - Reads Saltfile.lock for exact versions
     - Downloads and installs packages to vendor directory
     - Syncs Salt extensions automatically
 

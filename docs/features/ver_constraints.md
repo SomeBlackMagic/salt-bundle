@@ -18,4 +18,4 @@ salt-bundle implements a **rich version constraint DSL** in `resolver.py`. The `
 - **Wildcard**: `"1.2.x"` or `"1.2.*"` — matches any patch version under 1.2.
 - **Range**: `">=1.0.0,<2.0.0"` — comma-separated list of comparison operators (`>=`, `<=`, `>`, `<`, `=`), all of which must be satisfied simultaneously.
 
-Constraints are declared in `.salt-dependencies.yaml` under `dependencies` and also in each formula's `.saltbundle.yaml` `PackageDependency.version` field for transitive dependency resolution.
+Constraints are declared in `Saltfile` under `dependencies` and also in each formula's `FORMULA` `PackageDependency.version` field for transitive dependency resolution.

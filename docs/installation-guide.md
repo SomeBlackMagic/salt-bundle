@@ -1,765 +1,122 @@
-# Formula Installation Guide
+# Installation guide
 
-This guide explains how to use Salt Bundle to install and manage Salt formula dependencies in your projects.
+Salt Bundle installs FORMULA and EXTENSION packages declared by a project
+`Saltfile`. A package source is always a repository directory containing an
+`index.yaml` file.
 
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Setting Up a Project](#setting-up-a-project)
-- [Adding Repositories](#adding-repositories)
-- [Managing Dependencies](#managing-dependencies)
-- [Installation Process](#installation-process)
-- [Salt Integration](#salt-integration)
-- [Workflows](#workflows)
-- [Troubleshooting](#troubleshooting)
-
-## Prerequisites
-
-- Salt Bundle installed: `pip install salt-bundle`
-- Salt installed (for running states)
-- Access to at least one formula repository
-
-## Setting Up a Project
-
-### Initialize Project
+## Create a project
 
 ```bash
-# Create project directory
 mkdir my-infrastructure
 cd my-infrastructure
-
-# Initialize project configuration
 salt-bundle project init
 ```
 
-You'll be prompted for:
-- **Project name**: Identifier for your project
-- **Version**: Project version (optional)
-
-This creates `.saltbundle.yaml`:
+The command creates an empty manifest:
 
 ```yaml
-project: my-infrastructure
-version: 0.1.0
 vendor_dir: vendor
-
-repositories: []
-dependencies: {}
+dependencies: []
 ```
 
-### Project Structure
+A typical project layout is:
 
-Recommended structure:
-
-```
+```text
 my-infrastructure/
-├── .saltbundle.yaml    # Project configuration
-├── .salt-dependencies.lock    # Locked dependency versions (generated)
-├── salt/               # Your custom states
-│   ├── top.sls
-│   └── custom/
-│       └── init.sls
-├── pillar/             # Your pillar data
-│   ├── top.sls
-│   └── data.sls
-└── vendor/             # Installed dependencies (generated)
-    ├── nginx/
-    ├── mysql/
-    └── redis/
+├── Saltfile
+├── Saltfile.lock       # generated; commit it
+├── salt/               # project states
+├── pillar/             # project pillar data
+└── vendor/             # generated packages
 ```
 
-## Adding Repositories
+## Configure sources
 
-### Global Repositories
-
-Add repositories to your user configuration (`~/.config/salt-bundle/config.yaml`):
-
-```bash
-# Add public repository
-salt-bundle repo add \
-  --name saltstack \
-  --url https://salt-formulas.saltstack.com/
-
-# Add private repository
-salt-bundle repo add \
-  --name company \
-  --url https://formulas.company.com/
-
-# Add local repository
-salt-bundle repo add \
-  --name local \
-  --url file:///srv/salt-repo/
-```
-
-**View configuration:**
-
-```bash
-cat ~/.config/salt-bundle/config.yaml
-```
+You can give a dependency its own source, either an HTTP(S) repository or a
+local directory. The URL/path identifies the directory that contains
+`index.yaml`, not a package archive and not a Git repository.
 
 ```yaml
-repositories:
-  - name: saltstack
-    url: https://salt-formulas.saltstack.com/
-  - name: company
-    url: https://formulas.company.com/
-  - name: local
-    url: file:///srv/salt-repo/
-```
-
-### Project-Specific Repositories
-
-Add repositories directly in `.saltbundle.yaml`:
-
-```yaml
-project: my-infrastructure
-version: 0.1.0
 vendor_dir: vendor
-
-repositories:
-  - name: main
-    url: https://salt-repo.example.com/
-  - name: testing
-    url: https://test-repo.example.com/
-
-dependencies: {}
-```
-
-**Priority:** Project repositories are checked first, then global repositories.
-
-## Managing Dependencies
-
-### Add Dependencies
-
-Edit `.saltbundle.yaml`:
-
-```yaml
-project: my-infrastructure
-version: 0.1.0
-vendor_dir: vendor
-
-repositories:
-  - name: main
-    url: https://salt-repo.example.com/
-
 dependencies:
-  # Latest compatible with 2.x
-  nginx: "^2.0.0"
+  - name: nginx
+    version: "^2.0.0"
+    source: https://packages.example.test/salt
 
-  # Latest compatible with 5.7.x
-  mysql: "~5.7"
-
-  # Exact version
-  redis: "6.2.1"
-
-  # Version range
-  postgresql: ">=12.0,<14.0"
-
-  # From specific repository
-  main/internal-app: "^1.0"
+  - name: local-common
+    source: file:///srv/salt-packages
 ```
 
-See [Version Constraints](version-constraints.md) for details on version formats.
-
-### Repository-Specific Dependencies
-
-Use `repository/package` format to pull from specific repository:
-
-```yaml
-dependencies:
-  # Search all repositories
-  nginx: "^2.0.0"
-
-  # Only from 'company' repository
-  company/internal-formula: "^1.0.0"
-
-  # Only from 'testing' repository
-  testing/experimental: "^0.1.0"
-```
-
-## Installation Process
-
-### Install Dependencies
+For dependencies without `source`, add repositories to the global user
+configuration:
 
 ```bash
-cd my-infrastructure
+salt-bundle repo add --name internal --url https://packages.example.test/salt
+salt-bundle repo add --name local --url file:///srv/salt-packages
+```
+
+The configuration is stored in `~/.config/salt-bundle/config.yaml`:
+
+```yaml
+repositories:
+  - name: internal
+    url: https://packages.example.test/salt
+```
+
+## Resolve and install
+
+After editing `Saltfile`, resolve the graph and install it:
+
+```bash
 salt-bundle project update
 ```
 
-**What happens:**
+This selects compatible versions from every required `index.yaml`, writes
+`Saltfile.lock`, downloads the archives, installs them into `vendor_dir`, and
+asks Salt to sync extensions when `salt-call` is available.
 
-1. **Dependency Resolution**
-   - Reads `.saltbundle.yaml`
-   - Fetches repository indexes
-   - Resolves versions matching constraints
-   - Creates/updates `.salt-dependencies.lock`
-
-2. **Package Download**
-   - Downloads packages (with caching)
-   - Verifies SHA256 checksums
-   - Stores in `~/.cache/salt-bundle/packages/`
-
-3. **Installation**
-   - Extracts packages to `vendor/` directory
-   - Each formula in its own subdirectory
-
-**Output example:**
-
-```
-Resolving dependencies...
-Resolving nginx...
-  ✓ nginx 2.1.5 from main
-Resolving mysql...
-  ✓ mysql 5.7.8 from main
-Resolving redis...
-  ✓ redis 6.2.1 from main
-
-Installing nginx 2.1.5...
-Installing mysql 5.7.8...
-Installing redis 6.2.1...
-
-Installation complete!
-```
-
-### Lock File
-
-After installation, `.salt-dependencies.lock` is created:
-
-```yaml
-dependencies:
-  nginx:
-    version: 2.1.5
-    repository: main
-    url: https://salt-repo.example.com/nginx-2.1.5.tgz
-    digest: sha256:abc123...
-  mysql:
-    version: 5.7.8
-    repository: main
-    url: https://salt-repo.example.com/mysql-5.7.8.tgz
-    digest: sha256:def456...
-  redis:
-    version: 6.2.1
-    repository: main
-    url: https://salt-repo.example.com/redis-6.2.1.tgz
-    digest: sha256:ghi789...
-```
-
-**Commit this file** to ensure reproducible deployments.
-
-### Install from Lock File
-
-When `.salt-dependencies.lock` exists:
+For a reproducible install, use the existing lock file:
 
 ```bash
-# Install exact versions from lock file
 salt-bundle project install
-
-# Or explicitly
+# equivalent alias
 salt-bundle project vendor
 ```
 
-This installs exactly the versions in the lock file without resolving.
-
-### Update Dependencies
-
-Update to latest compatible versions:
-
-```bash
-# Update all dependencies
-salt-bundle project update
-
-# Check what would be updated (planned feature)
-# salt-bundle project update --dry-run
-
-# Update single dependency (planned feature)
-# salt-bundle project update --dependency nginx
-```
-
-### Ignore Lock File
-
-Resolve from scratch (not recommended for production):
-
-```bash
-# Note: project update always resolves dependencies
-salt-bundle project update
-```
-
-## Salt Integration
-
-### Method 1: Automatic Salt Loader Plugin (Recommended)
-
-After installing `salt-bundle` via pip, Salt automatically discovers formulas without any configuration changes.
-
-**Installation:**
-
-```bash
-pip install salt-bundle
-```
-
-**Usage:**
-
-Simply run Salt commands from your project directory:
-
-```bash
-cd my-infrastructure
-
-# Formulas automatically discovered from vendor/
-salt-call state.apply nginx
-
-# Works with salt-ssh too
-salt-ssh '*' state.apply mysql
-
-# Check discovered formulas
-salt-call pillar.get saltbundle:formulas
-
-# Verify file_roots includes vendor/
-salt-call config.get file_roots
-```
-
-**How it works:**
-
-1. After `pip install salt-bundle`, Salt automatically loads the plugin via entry points
-2. Plugin searches for `.saltbundle.yaml` in current working directory (or parent directories)
-3. Reads `vendor_dir` from config (defaults to `vendor`)
-4. Automatically adds all formulas from `vendor/` to Salt's `file_roots`
-5. No changes to `/etc/salt/master` or `/etc/salt/minion` required!
-
-**Requirements:**
-
-- `.saltbundle.yaml` must exist in current directory or parent directories
-- `vendor_dir` must be specified in config (defaults to `vendor`)
-- Formulas must be installed via `salt-bundle project install` or `salt-bundle project vendor`
-
-**Verification:**
-
-```bash
-# Check if loader is working - should show project info
-salt-call pillar.get saltbundle
-
-# Example output:
-# saltbundle:
-#   project_dir: /path/to/my-infrastructure
-#   vendor_dir: vendor
-#   formulas:
-#     - nginx
-#     - mysql
-#     - redis
-#   formula_paths:
-#     - /path/to/my-infrastructure/vendor/nginx
-#     - /path/to/my-infrastructure/vendor/mysql
-#     - /path/to/my-infrastructure/vendor/redis
-```
-
-See [Automatic Loader Examples](../examples/project/README.md) for more details.
-
-### Method 2: Wrapper Script
-
-Create `salt.sh` in project root:
-
-```bash
-#!/usr/bin/env bash
-PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
-VENDOR_DIR="${PROJECT_ROOT}/vendor"
-SALT_DIR="${PROJECT_ROOT}/salt"
-PILLAR_DIR="${PROJECT_ROOT}/pillar"
-
-exec salt-call --local \
-  --file-root="${SALT_DIR}:${VENDOR_DIR}" \
-  --pillar-root="${PILLAR_DIR}" \
-  "$@"
-```
-
-Make executable:
-
-```bash
-chmod +x salt.sh
-```
-
-**Usage:**
-
-```bash
-# Apply all states
-./salt.sh state.apply
-
-# Apply specific state from vendor
-./salt.sh state.apply nginx
-
-# Apply your custom state
-./salt.sh state.apply custom
-
-# Show SLS from vendor
-./salt.sh state.show_sls nginx
-```
-
-### Method 3: Master Configuration
-
-For permanent configuration, edit `/etc/salt/master`:
-
-```yaml
-file_roots:
-  base:
-    - /srv/salt
-    - /srv/my-infrastructure/vendor
-
-pillar_roots:
-  base:
-    - /srv/pillar
-```
-
-Restart master:
-
-```bash
-systemctl restart salt-master
-```
-
-**Note:** With the automatic loader plugin (Method 1), this configuration is not necessary.
-
-### Method 4: Minion Configuration
-
-For permanent configuration, edit `/etc/salt/minion`:
-
-```yaml
-file_roots:
-  base:
-    - /srv/salt
-    - /srv/my-infrastructure/vendor
-
-pillar_roots:
-  base:
-    - /srv/pillar
-```
-
-Restart minion:
-
-```bash
-systemctl restart salt-minion
-```
-
-**Note:** With the automatic loader plugin (Method 1), this configuration is not necessary.
-
-### Using Formulas
-
-**top.sls:**
-
-```yaml
-base:
-  '*':
-    - nginx           # From vendor/nginx/
-    - mysql           # From vendor/mysql/
-    - custom.myapp    # From salt/custom/myapp.sls
-```
-
-**Command line:**
-
-```bash
-# Apply nginx formula
-salt '*' state.apply nginx
-
-# Or with wrapper
-./salt.sh state.apply nginx
-```
-
-## Workflows
-
-### Development Workflow
-
-```bash
-# 1. Start new project
-mkdir my-project
-cd my-project
-salt-bundle project init
-
-# 2. Add repositories
-salt-bundle repo add --name main --url https://formulas.example.com/
-
-# 3. Add dependencies
-cat >> .salt-dependencies.yaml << EOF
-dependencies:
-  nginx: "^2.0"
-  mysql: "^5.7"
-EOF
-
-# 4. Install
-salt-bundle project update
-
-# 5. Test
-./salt.sh state.show_sls nginx
-
-# 6. Commit
-git add .saltbundle.yaml .salt-dependencies.lock
-git commit -m "Add nginx and mysql dependencies"
-```
-
-### Production Deployment
-
-```bash
-# 1. Clone project
-git clone https://github.com/company/infrastructure.git
-cd infrastructure
-
-# 2. Install dependencies from lock file
-salt-bundle project vendor
-
-# 3. Verify integrity
-salt-bundle formula verify
-
-# 4. Apply states
-./salt.sh state.apply
-```
-
-### Update Workflow
-
-```bash
-# 1. Check current versions
-cat .salt-dependencies.lock
-
-# 2. Update dependencies
-salt-bundle project update
-
-# 3. Test new versions
-./salt.sh state.apply test=True
-
-# 4. Commit if successful
-git add .salt-dependencies.lock
-git commit -m "Update dependencies"
-```
-
-### Adding New Dependency
-
-```bash
-# 1. Edit configuration
-cat >> .saltbundle.yaml << EOF
-  redis: "^6.0"
-EOF
-
-# 2. Install
-salt-bundle project update
-
-# 3. Test
-./salt.sh state.show_sls redis
-
-# 4. Use in states
-cat > salt/app.sls << EOF
-include:
-  - redis
-
-app-depends-on-redis:
-  test.succeed_without_changes:
-    - require:
-      - sls: redis
-EOF
-
-# 5. Commit
-git add .saltbundle.yaml .salt-dependencies.lock salt/app.sls
-git commit -m "Add redis dependency"
-```
-
-## Verification
-
-### Verify Dependencies
-
-Check that all dependencies are correctly installed:
+`Saltfile.lock` records the exact package version, repository URL, archive
+path, SHA-256 digest, and package type. Do not edit it manually; commit it and
+regenerate it with `project update` when changing dependencies.
+
+## Dependency rules
+
+- `dependencies` in `Saltfile` is a list of objects with `name`, optional
+  `version`, and optional `source`.
+- Constraints use semantic-version expressions such as `^2.0.0`, `~2.3.0`,
+  or `>=1.0.0,<2.0.0`.
+- Transitive dependencies come from the package metadata and are resolved the
+  same way.
+- A FORMULA may use FORMULA or EXTENSION dependencies. An EXTENSION may use
+  only EXTENSION dependencies.
+
+## Verify the installation
 
 ```bash
 salt-bundle formula verify
+find vendor -maxdepth 2 -name FORMULA -o -name EXTENSION
 ```
 
-**Output:**
+If a package cannot be resolved, first make sure its source ends at a
+directory serving `index.yaml`, then check the package name and version range
+against that index. A digest mismatch means the archive no longer matches the
+published index; republish the archive and regenerate the repository index.
 
-```
-✓ nginx 2.1.5
-✓ mysql 5.7.8
-✓ redis 6.2.1
+## Salt integration
 
-All dependencies verified successfully!
-```
+The Salt loader integration discovers installed FORMULA and EXTENSION packages
+from the configured vendor directory. Run states from the project directory so
+the loader can find its `Saltfile`; `project update` and `project install` also
+attempt `salt-call --local saltutil.sync_all` for extensions.
 
-**Errors detected:**
-
-```
-✓ nginx 2.1.5
-  mysql: not installed
-✓ redis 6.2.1
-
-Errors found:
-  mysql: not installed
-```
-
-### Manual Verification
-
-```bash
-# Check vendor directory
-ls -la vendor/
-
-# Check formula contents
-ls -la vendor/nginx/
-
-# Verify metadata
-cat vendor/nginx/.saltbundle.yaml
-
-# Test with Salt
-./salt.sh state.show_sls nginx
-```
-
-## Caching
-
-### Cache Location
-
-```bash
-~/.cache/salt-bundle/
-├── index/        # Repository indexes
-└── packages/     # Downloaded packages
-```
-
-### Clear Cache
-
-```bash
-# Remove all cache
-rm -rf ~/.cache/salt-bundle/
-
-# Remove package cache only
-rm -rf ~/.cache/salt-bundle/packages/
-
-# Remove index cache only
-rm -rf ~/.cache/salt-bundle/index/
-```
-
-## Troubleshooting
-
-### Error: .saltbundle.yaml not found
-
-**Problem:**
-```
-Error: .salt-dependencies.yaml not found. Run 'salt-bundle project init' first.
-```
-
-**Solution:**
-```bash
-salt-bundle project init
-```
-
-### Error: No repositories configured
-
-**Problem:**
-```
-Warning: No repositories configured
-```
-
-**Solution:** Add at least one repository:
-```bash
-salt-bundle repo add --name main --url https://formulas.example.com/
-```
-
-Or add to `.saltbundle.yaml`:
-```yaml
-repositories:
-  - name: main
-    url: https://formulas.example.com/
-```
-
-### Error: Repository not found
-
-**Problem:**
-```
-Error: Repository 'main' not found for dependency 'main/nginx'
-Available repositories: saltstack, company
-```
-
-**Solution:** Add the repository:
-```bash
-salt-bundle repo add --name main --url https://repo.example.com/
-```
-
-Or remove repository prefix from dependency:
-```yaml
-dependencies:
-  nginx: "^2.0"  # Instead of main/nginx
-```
-
-### Error: Could not resolve dependency
-
-**Problem:**
-```
-Error: Could not resolve dependency: nginx ^2.0.0
-```
-
-**Solutions:**
-
-1. Check package exists in repository:
-```bash
-# Download index manually
-curl https://repo.example.com/index.yaml
-```
-
-1. Check version constraint:
-```yaml
-# Try broader constraint
-nginx: "^1.0"  # Instead of ^2.0
-```
-
-1. Check repository URL:
-```bash
-salt-bundle repo add --name main --url https://correct-url.example.com/
-```
-
-### Error: Digest mismatch
-
-**Problem:**
-```
-Error: Digest mismatch for nginx-2.1.5.tgz
-```
-
-**Solutions:**
-
-1. Clear cache and retry:
-```bash
-rm -rf ~/.cache/salt-bundle/packages/
-salt-bundle project update
-```
-
-1. Check repository integrity:
-```bash
-# Re-generate index on repository server
-cd /srv/salt-repo
-salt-bundle repo index
-```
-
-### Error: Network timeout
-
-**Problem:**
-```
-Error: Failed to fetch from main: timeout
-```
-
-**Solutions:**
-
-1. Check network connectivity:
-```bash
-curl -I https://repo.example.com/index.yaml
-```
-
-1. Use local repository:
-```bash
-salt-bundle repo add --name local --url file:///srv/salt-repo/
-```
-
-### Vendor directory not found
-
-**Problem:** Salt can't find formulas from vendor directory
-
-**Solution:** Check `file_roots` configuration:
-
-```bash
-# Test with wrapper script
-./salt.sh --file-root=./vendor state.show_sls nginx
-
-# Or verify file_roots in config
-salt-call --local config.get file_roots
-```
-
-## Next Steps
-
-- [Project Configuration](project-configuration.md) - Complete `.saltbundle.yaml` reference
-- [Version Constraints](version-constraints.md) - Understanding semver
-- [CLI Reference](cli-reference.md) - All commands
-- [Publishing Guide](publishing-guide.md) - Create your own formulas
+For manifest and index schemas, see [Project configuration](project-configuration.md)
+and [File formats](file-formats.md). For repository publishing, see
+[Repository setup](repository-setup.md).

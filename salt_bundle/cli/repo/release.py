@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from salt_bundle import release as release_module
+from salt_bundle.storage import release as release_module
 
 
 @click.command()
@@ -65,14 +65,14 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
         Expects subdirectories, each containing a formula:
           formulas/
             ├── formula-1/
-            │   └── .saltbundle.yaml
+            │   └── FORMULA
             └── formula-2/
-                └── .saltbundle.yaml
+                └── FORMULA
 
     Single mode (--single):
         Treats formulas-dir as one formula:
           my-formula/
-            └── .saltbundle.yaml
+            └── FORMULA
 
     Examples:
 
@@ -108,7 +108,7 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
     - 1: Errors occurred during release
 
     See also:
-    - 'salt-bundle formula pack' to manually package formulas
+    - 'salt-bundle package pack' to manually package packages
     - 'salt-bundle repo index' to manually update index
     """
     try:
@@ -123,7 +123,7 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
         click.echo(f"Provider: {provider}")
 
         # Initialize provider
-        from salt_bundle.providers import LocalReleaseProvider, GitHubReleaseProvider
+        from salt_bundle.storage.providers import LocalReleaseProvider, GitHubReleaseProvider
 
         if provider == 'local':
             if not pkg_storage_dir:

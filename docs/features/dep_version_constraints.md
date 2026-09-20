@@ -10,7 +10,7 @@ spm has **no version constraints on dependencies**. The `FORMULA` file's `depend
 
 ## salt-bundle
 
-salt-bundle supports **full version constraints on dependencies** at both the project and package levels. In `.salt-dependencies.yaml`, each dependency value is a version constraint string. In `.saltbundle.yaml`, each `PackageDependency.version` field is also a constraint string. These are evaluated by `resolver.matches_constraint()` during resolution.
+salt-bundle supports **full version constraints on dependencies** at both the project and package levels. In `Saltfile`, each dependency value is a version constraint string. In `FORMULA`, each `PackageDependency.version` field is also a constraint string. These are evaluated by `resolver.matches_constraint()` during resolution.
 
 Constraints supported (as documented in `resolver.py`):
 
