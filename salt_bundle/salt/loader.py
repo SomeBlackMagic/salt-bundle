@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from functools import lru_cache
 
+from salt_bundle.salt import runtime_context
+
 log = logging.getLogger(__name__)
 
 # Cache for results to avoid rescanning on every call
@@ -145,167 +147,195 @@ def _get_module_dirs(formula_type: str) -> tuple:
     return tuple(paths)
 
 
+@lru_cache(maxsize=256)
+def _get_manifest_dirs(
+    namespace: str,
+    fingerprint: str,
+    package_paths: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Return namespace directories cached by runtime manifest fingerprint."""
+    del fingerprint
+    return tuple(
+        str(namespace_path)
+        for package_path in package_paths
+        if (namespace_path := Path(package_path) / f"_{namespace}").is_dir()
+    )
+
+
+def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, ...]:
+    """Get active runtime directories, or preserve legacy global activation."""
+    effective_opts = opts if opts is not None else globals().get("__opts__", {})
+    manifest = runtime_context.get_manifest(effective_opts)
+    if manifest is None:
+        return _get_module_dirs(namespace)
+    return _get_manifest_dirs(
+        namespace,
+        manifest.fingerprint,
+        tuple(package.path for package in manifest.packages),
+    )
+
+
 # Entry points for Salt loader
 def module_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _modules directories in vendor formulas."""
-    return list(_get_module_dirs("modules"))
+    return list(_get_loader_dirs(opts, "modules"))
 
 
 def auth_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _auth directories in vendor formulas."""
-    return list(_get_module_dirs("auth"))
+    return list(_get_loader_dirs(opts, "auth"))
 
 
 def states_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _states directories in vendor formulas."""
-    result = list(_get_module_dirs("states"))
+    result = list(_get_loader_dirs(opts, "states"))
     # log.debug(f"SaltBundle: states_dirs() called, returning {len(result)} paths: {result}")
     return result
 
 
 def cache_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _cache directories in vendor formulas."""
-    return list(_get_module_dirs("cache"))
+    return list(_get_loader_dirs(opts, "cache"))
 
 
 def executor_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _executors directories in vendor formulas."""
-    return list(_get_module_dirs("executors"))
+    return list(_get_loader_dirs(opts, "executors"))
 
 
 def grains_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _grains directories in vendor formulas."""
-    return list(_get_module_dirs("grains"))
+    return list(_get_loader_dirs(opts, "grains"))
 
 
 def log_handlers_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _log_handlers directories in vendor formulas."""
-    return list(_get_module_dirs("log_handlers"))
+    return list(_get_loader_dirs(opts, "log_handlers"))
 
 
 def matchers_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _matchers directories in vendor formulas."""
-    return list(_get_module_dirs("matchers"))
+    return list(_get_loader_dirs(opts, "matchers"))
 
 
 def metaproxy_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _metaproxy directories in vendor formulas."""
-    return list(_get_module_dirs("metaproxy"))
+    return list(_get_loader_dirs(opts, "metaproxy"))
 
 
 def netapi_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _netapi directories in vendor formulas."""
-    return list(_get_module_dirs("netapi"))
+    return list(_get_loader_dirs(opts, "netapi"))
 
 
 def pillar_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _pillar directories in vendor formulas."""
-    return list(_get_module_dirs("pillar"))
+    return list(_get_loader_dirs(opts, "pillar"))
 
 
 def queue_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _queues directories in vendor formulas."""
-    return list(_get_module_dirs("queues"))
+    return list(_get_loader_dirs(opts, "queues"))
 
 
 def returner_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _returners directories in vendor formulas."""
-    return list(_get_module_dirs("returners"))
+    return list(_get_loader_dirs(opts, "returners"))
 
 
 def roster_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _roster directories in vendor formulas."""
-    return list(_get_module_dirs("roster"))
+    return list(_get_loader_dirs(opts, "roster"))
 
 
 def runner_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _runners directories in vendor formulas."""
-    return list(_get_module_dirs("runners"))
+    return list(_get_loader_dirs(opts, "runners"))
 
 
 def sdb_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _sdb directories in vendor formulas."""
-    return list(_get_module_dirs("sdb"))
+    return list(_get_loader_dirs(opts, "sdb"))
 
 
 def serializers_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _serializers directories in vendor formulas."""
-    return list(_get_module_dirs("serializers"))
+    return list(_get_loader_dirs(opts, "serializers"))
 
 
 def outputter_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _output directories in vendor formulas."""
-    return list(_get_module_dirs("output"))
+    return list(_get_loader_dirs(opts, "output"))
 
 
 def pkgdb_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _pkgdb directories in vendor formulas."""
-    return list(_get_module_dirs("pkgdb"))
+    return list(_get_loader_dirs(opts, "pkgdb"))
 
 
 def pkgfiles_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _pkgfiles directories in vendor formulas."""
-    return list(_get_module_dirs("pkgfiles"))
+    return list(_get_loader_dirs(opts, "pkgfiles"))
 
 
 def top_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _tops directories in vendor formulas."""
-    return list(_get_module_dirs("tops"))
+    return list(_get_loader_dirs(opts, "tops"))
 
 
 def utils_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _utils directories in vendor formulas."""
-    return list(_get_module_dirs("utils"))
+    return list(_get_loader_dirs(opts, "utils"))
 
 
 def wrapper_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _wrapper directories in vendor formulas."""
-    return list(_get_module_dirs("wrapper"))
+    return list(_get_loader_dirs(opts, "wrapper"))
 
 
 def render_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _renderers directories in vendor formulas."""
-    return list(_get_module_dirs("renderers"))
+    return list(_get_loader_dirs(opts, "renderers"))
 
 
 def engines_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _engines directories in vendor formulas."""
-    return list(_get_module_dirs("engines"))
+    return list(_get_loader_dirs(opts, "engines"))
 
 
 def proxy_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _proxy directories in vendor formulas."""
-    return list(_get_module_dirs("proxy"))
+    return list(_get_loader_dirs(opts, "proxy"))
 
 
 def cloud_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _clouds directories in vendor formulas."""
-    return list(_get_module_dirs("clouds"))
+    return list(_get_loader_dirs(opts, "clouds"))
 
 
 def beacons_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _beacons directories in vendor formulas."""
-    return list(_get_module_dirs("beacons"))
+    return list(_get_loader_dirs(opts, "beacons"))
 
 
 def thorium_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _thorium directories in vendor formulas."""
-    return list(_get_module_dirs("thorium"))
+    return list(_get_loader_dirs(opts, "thorium"))
 
 
 def tokens_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _tokens directories in vendor formulas."""
-    return list(_get_module_dirs("tokens"))
+    return list(_get_loader_dirs(opts, "tokens"))
 
 
 def wheel_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _wheel directories in vendor formulas."""
-    return list(_get_module_dirs("wheel"))
+    return list(_get_loader_dirs(opts, "wheel"))
 
 
 def fileserver_dirs(opts: Dict[str, Any] = None) -> List[str]:
     """Return paths to _fileserver directories in vendor formulas and bundlefs."""
-    paths = list(_get_module_dirs("fileserver"))
+    paths = list(_get_loader_dirs(opts, "fileserver"))
 
     # Add bundlefs from salt_bundle package itself
     bundlefs_path = Path(__file__).parent / "fileserver"
