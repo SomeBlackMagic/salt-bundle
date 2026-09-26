@@ -169,8 +169,20 @@ def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, 
     return _get_manifest_dirs(
         namespace,
         manifest.fingerprint,
-        tuple(package.path for package in manifest.packages),
+        tuple(
+            str(_resolve_manifest_package_path(package.path, effective_opts))
+            for package in manifest.packages
+        ),
     )
+
+
+def _resolve_manifest_package_path(path: str, opts: Dict[str, Any]) -> Path:
+    """Resolve a portable manifest path in the local minion project tree."""
+    package_path = Path(path)
+    if package_path.is_absolute():
+        return package_path
+    project_root = opts.get("salt_bundle_runtime_project_root")
+    return Path(project_root) / package_path if project_root else package_path
 
 
 # Entry points for Salt loader
