@@ -15,6 +15,7 @@ from salt_bundle.package_layout import (
     discover_package_paths,
     resolve_namespace_dir,
 )
+from salt_bundle.salt import runtime_context
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +26,54 @@ _CACHE = {
     'vendor_roots': None,
     'config_path': None,
 }
+
+_SPECIAL_NAMESPACES = (
+    "auth",
+    "beacons",
+    "cache",
+    "clouds",
+    "engines",
+    "executors",
+    "grains",
+    "log_handlers",
+    "matchers",
+    "metaproxy",
+    "modules",
+    "netapi",
+    "output",
+    "pillar",
+    "pkgdb",
+    "pkgfiles",
+    "proxy",
+    "queues",
+    "renderers",
+    "returners",
+    "roster",
+    "runners",
+    "sdb",
+    "serializers",
+    "states",
+    "thorium",
+    "tokens",
+    "tops",
+    "utils",
+    "wheel",
+    "wrapper",
+)
+
+
+def _get_active_roots() -> list[tuple[Path, str]]:
+    """Return manifest packages, or retain the legacy vendor scan."""
+    manifest = runtime_context.get_manifest(globals().get("__opts__", {}))
+    if manifest is not None:
+        return [
+            (Path(package.path), package.package_type)
+            for package in manifest.packages
+        ]
+    return [
+        (Path(root), detect_package_type(Path(root)))
+        for root in _get_vendor_roots()
+    ]
 
 
 def _find_project_config() -> Optional[Path]:
@@ -135,7 +184,8 @@ def find_file(path, saltenv="base", **kwargs):
 
     Returns dict with path info or empty dict if not found.
     """
-    roots = _get_vendor_roots()
+    manifest = runtime_context.get_manifest(globals().get("__opts__", {}))
+    roots = _get_active_roots()
     if not roots:
         return {'path': '', 'rel': ''}
 
@@ -147,17 +197,16 @@ def find_file(path, saltenv="base", **kwargs):
     file_name = parts[1]
 
     # Handle special directories: _states, _modules, etc.
-    special_dirs = {'_states', '_modules', '_grains', '_renderers', '_returners',
-                    '_runners', '_output', '_utils', '_pillar', '_engines', '_proxy', '_beacons'}
+    special_dirs = {f"_{namespace}" for namespace in _SPECIAL_NAMESPACES}
 
     if first_part in special_dirs:
         # Format: _states/incus.py -> search in all formulas
         namespace = first_part[1:]
 
         # Try to find the file in any formula
-        for root in roots:
+        for root, package_type in roots:
             namespace_dir = resolve_namespace_dir(
-                Path(root), detect_package_type(Path(root)), namespace
+                root, package_type, namespace
             )
             if namespace_dir is None:
                 continue
@@ -171,17 +220,26 @@ def find_file(path, saltenv="base", **kwargs):
                     'back': 'bundlefs',
                 }
     else:
-        # Standard formula file lookup: formula_name/file
-        formula_name = first_part
-        file_path = file_name
+        for root, package_type in roots:
+            if package_type == "extension":
+                continue
+            full_path = root / path
+            if full_path.is_file():
+                stat = full_path.stat()
+                return {
+                    'path': str(full_path),
+                    'rel': path,
+                    'stat': tuple(stat),
+                    'back': 'bundlefs',
+                }
 
-        for root in roots:
-            if Path(root).name == formula_name:
-                full_path = os.path.join(root, file_path)
-                if os.path.isfile(full_path):
-                    stat = os.stat(full_path)
+            # Preserve the legacy formula-name lookup for projects without a manifest.
+            if manifest is None and root.name == first_part:
+                full_path = root / file_name
+                if full_path.is_file():
+                    stat = full_path.stat()
                     return {
-                        'path': full_path,
+                        'path': str(full_path),
                         'rel': path,
                         'stat': tuple(stat),
                         'back': 'bundlefs',
@@ -202,19 +260,15 @@ def file_list(load):
     - vendor/formula/init.sls -> formula/init.sls (normal files)
     """
     result = set()
-    roots = _get_vendor_roots()
+    manifest = runtime_context.get_manifest(globals().get("__opts__", {}))
+    roots = _get_active_roots()
 
     # Special directories that should be exposed at root level for Salt auto-sync
-    special_dirs = {'_states', '_modules', '_grains', '_renderers', '_returners',
-                    '_runners', '_output', '_utils', '_pillar', '_engines', '_proxy', '_beacons'}
-
-    for root in roots:
-        package_path = Path(root)
+    for package_path, package_type in roots:
         formula_name = package_path.name
-        package_type = detect_package_type(package_path)
         namespace_paths = {
             namespace_path: f"_{namespace}"
-            for namespace in (name[1:] for name in special_dirs)
+            for namespace in _SPECIAL_NAMESPACES
             if (namespace_path := resolve_namespace_dir(package_path, package_type, namespace))
             is not None
         }
@@ -225,7 +279,10 @@ def file_list(load):
                         f"{exposed_namespace}/{file_path.relative_to(namespace_path).as_posix()}"
                     )
 
-        for dirpath, directories, filenames in os.walk(root):
+        if package_type == "extension":
+            continue
+
+        for dirpath, directories, filenames in os.walk(package_path):
             directories[:] = [
                 directory
                 for directory in directories
@@ -235,9 +292,10 @@ def file_list(load):
             # Check if we're in a special directory
             for filename in filenames:
                 full = os.path.join(dirpath, filename)
-                rel = os.path.relpath(full, root)
-                # Regular files with formula prefix: formula/init.sls
-                result.add(f"{formula_name}/{rel}")
+                rel = os.path.relpath(full, package_path)
+                # A manifest path already includes the formula's state namespace.
+                # Legacy packages keep their historical formula-name prefix.
+                result.add(rel if manifest is not None else f"{formula_name}/{rel}")
 
     return sorted(result)
 
@@ -250,25 +308,27 @@ def dir_list(load):
     Return list of all directories in the fileserver.
     """
     result = set()
-    roots = _get_vendor_roots()
+    roots = _get_active_roots()
 
-    for root in roots:
-        package_path = Path(root)
+    for package_path, package_type in roots:
         namespace_paths = {
             namespace_path: f"_{namespace}"
-            for namespace in ("states", "modules", "grains", "renderers", "returners",
-                              "runners", "output", "utils", "pillar", "engines", "proxy", "beacons")
+            for namespace in _SPECIAL_NAMESPACES
             if (namespace_path := resolve_namespace_dir(
-                package_path, detect_package_type(package_path), namespace
+                package_path, package_type, namespace
             )) is not None
         }
-        for dirpath, directories, _ in os.walk(root):
+        if package_type == "extension":
+            result.update(namespace_paths.values())
+            continue
+
+        for dirpath, directories, _ in os.walk(package_path):
             directories[:] = [
                 directory
                 for directory in directories
                 if Path(dirpath, directory) not in namespace_paths
             ]
-            rel = os.path.relpath(dirpath, root)
+            rel = os.path.relpath(dirpath, package_path)
             if rel != '.':
                 result.add(rel)
         result.update(namespace_paths.values())
