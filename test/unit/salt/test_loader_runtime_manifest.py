@@ -153,3 +153,33 @@ class TestManifestAwareLoader(unittest.TestCase):
 
         self.assertIn(str(active_fileserver), result)
         self.assertNotIn(str(inactive_fileserver), result)
+
+    def test_loader_uses_saltext_namespace_directories_for_active_extensions(self) -> None:
+        extension = self.project_dir / "vendor" / "acme" / "k0s"
+        extension_modules = extension / "src" / "saltext" / "k0s" / "modules"
+        extension_states = extension / "src" / "saltext" / "k0s" / "states"
+        extension_modules.mkdir(parents=True)
+        extension_states.mkdir()
+        manifest = RuntimeManifest(
+            schema_version=1,
+            saltenv="base",
+            fingerprint="extension-fingerprint",
+            packages=(
+                ManifestPackageEntry(
+                    name=PackageName.parse("acme/k0s"),
+                    version="1.0.0",
+                    package_type="extension",
+                    digest="sha256:k0s",
+                    path=str(extension),
+                ),
+            ),
+        )
+
+        self.assertEqual(
+            loader.module_dirs({"salt_bundle_runtime_manifest": manifest}),
+            [str(extension_modules)],
+        )
+        self.assertEqual(
+            loader.states_dirs({"salt_bundle_runtime_manifest": manifest}),
+            [str(extension_states)],
+        )

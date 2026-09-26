@@ -26,3 +26,18 @@ class TestSaltfileConfig(unittest.TestCase):
 
             self.assertTrue((project_dir / "Saltfile").exists())
             self.assertEqual(load_saltfile(project_dir), config)
+
+    def test_runtime_configuration_has_defaults_and_round_trips(self) -> None:
+        config = SaltfileConfig(
+            runtime={
+                "top_bundle_file": "environments/prod.sls",
+                "cache_dir": ".runtime-cache",
+                "max_workers": 8,
+                "require_bundle_top": True,
+            }
+        )
+
+        self.assertEqual(config.runtime.top_bundle_file, "environments/prod.sls")
+        self.assertEqual(config.runtime.cache_dir, ".runtime-cache")
+        self.assertEqual(config.runtime.max_workers, 8)
+        self.assertTrue(config.runtime.require_bundle_top)

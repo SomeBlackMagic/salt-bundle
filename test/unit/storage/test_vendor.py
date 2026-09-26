@@ -7,6 +7,7 @@ from salt_bundle.storage.vendor import (
     ensure_vendor_dir,
     get_installed_packages,
     install_package_to_vendor,
+    is_package_installed,
 )
 
 
@@ -58,3 +59,12 @@ class TestVendorOperations(unittest.TestCase):
     def test_get_installed_packages_empty_dir(self) -> None:
         vendor_dir = self.root / "vendor"
         self.assertEqual(get_installed_packages(vendor_dir), [])
+
+    def test_installed_packages_use_vendor_package_directory_nesting(self) -> None:
+        vendor_dir = self.root / "vendor"
+        package_dir = vendor_dir / "acme" / "nginx"
+        package_dir.mkdir(parents=True)
+        (package_dir / "FORMULA").touch()
+
+        self.assertTrue(is_package_installed("acme/nginx", vendor_dir))
+        self.assertEqual(get_installed_packages(vendor_dir), ["acme/nginx"])

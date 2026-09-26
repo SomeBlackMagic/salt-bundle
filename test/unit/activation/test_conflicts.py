@@ -21,13 +21,19 @@ class TestConflictDetection(unittest.TestCase):
 
         return conflicts
 
-    def _package(self, root: Path, name: str, version: str = "1.0.0") -> ResolvedPackage:
+    def _package(
+        self,
+        root: Path,
+        name: str,
+        version: str = "1.0.0",
+        package_type: str = "formula",
+    ) -> ResolvedPackage:
         package_path = root / name
         package_path.mkdir(parents=True)
         return ResolvedPackage(
             name=PackageName.parse(name),
             version=version,
-            package_type="extension",
+            package_type=package_type,
             path=package_path,
             digest=f"sha256:{name}",
         )
@@ -175,4 +181,32 @@ class TestConflictDetection(unittest.TestCase):
         self.assertEqual(
             [package.name.full_name for package in report.collisions[0].providers],
             ["acme/first", "acme/second", "acme/third"],
+        )
+
+    def test_detect_conflicts_reports_a_formula_and_extension_module_collision(self) -> None:
+        conflicts = self._conflicts_module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            formula = ResolvedPackage(
+                name=PackageName.parse("acme/formula"),
+                version="1.0.0",
+                package_type="formula",
+                path=root / "acme" / "formula",
+                digest="sha256:formula",
+            )
+            extension = self._package(
+                root, "contoso/extension", package_type="extension"
+            )
+            (formula.path / "_modules").mkdir(parents=True)
+            (formula.path / "_modules" / "shared.py").touch()
+            extension_modules = extension.path / "src" / "saltext" / "extension" / "modules"
+            extension_modules.mkdir(parents=True)
+            (extension_modules / "shared.py").touch()
+
+            report = conflicts.detect_conflicts([formula, extension], {})
+
+        self.assertEqual(len(report.collisions), 1)
+        self.assertEqual(
+            {package.name.full_name for package in report.collisions[0].providers},
+            {"acme/formula", "contoso/extension"},
         )

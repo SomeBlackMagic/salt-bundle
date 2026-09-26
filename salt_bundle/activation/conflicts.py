@@ -4,21 +4,22 @@ from dataclasses import dataclass
 
 from salt_bundle.activation.models import PackageName, ResolvedPackage
 from salt_bundle.packaging.types import PackageMetadata
+from salt_bundle.package_layout import resolve_namespace_dir
 
 
 SALT_LOADER_NAMESPACES = {
-    "_beacons",
-    "_engines",
-    "_grains",
-    "_modules",
-    "_output",
-    "_pillar",
-    "_proxy",
-    "_renderers",
-    "_returners",
-    "_runners",
-    "_states",
-    "_utils",
+    "beacons",
+    "engines",
+    "grains",
+    "modules",
+    "output",
+    "pillar",
+    "proxy",
+    "renderers",
+    "returners",
+    "runners",
+    "states",
+    "utils",
 }
 
 
@@ -85,12 +86,14 @@ def check_namespace_collisions(
     providers_by_path: dict[str, list[ResolvedPackage]] = {}
     for package in packages:
         for namespace in SALT_LOADER_NAMESPACES:
-            namespace_path = package.path / namespace
-            if not namespace_path.is_dir():
+            namespace_path = resolve_namespace_dir(
+                package.path, package.package_type, namespace
+            )
+            if namespace_path is None:
                 continue
             for candidate in namespace_path.rglob("*"):
                 if candidate.is_file():
-                    path = candidate.relative_to(package.path).as_posix()
+                    path = f"_{namespace}/{candidate.relative_to(namespace_path).as_posix()}"
                     providers_by_path.setdefault(path, []).append(package)
 
     return [

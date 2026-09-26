@@ -10,6 +10,12 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+from salt_bundle.package_layout import (
+    detect_package_type,
+    discover_package_paths,
+    resolve_namespace_dir,
+)
+
 log = logging.getLogger(__name__)
 
 __virtualname__ = "bundlefs"
@@ -27,8 +33,9 @@ def _find_project_config() -> Optional[Path]:
         return _CACHE['config_path']
 
     # Try getting from __opts__
-    if '__opts__' in globals():
-        config_dir = Path(__opts__.get("config_dir", "")).parent
+    opts = globals().get("__opts__", {})
+    if opts:
+        config_dir = Path(opts.get("config_dir", "")).parent
         cfg = config_dir / "Saltfile"
         if cfg.exists():
             _CACHE['config_path'] = cfg
@@ -84,11 +91,7 @@ def _get_vendor_roots() -> List[str]:
         log.warning(f"bundlefs: vendor dir not found: {vendor_path}")
         return []
 
-    # Collect all subdirectories in vendor/
-    roots = []
-    for item in vendor_path.iterdir():
-        if item.is_dir() and not item.name.startswith("."):
-            roots.append(str(item.absolute()))
+    roots = [str(package.absolute()) for package in discover_package_paths(vendor_path)]
 
     if roots:
         formula_names = [Path(r).name for r in roots]
@@ -149,15 +152,20 @@ def find_file(path, saltenv="base", **kwargs):
 
     if first_part in special_dirs:
         # Format: _states/incus.py -> search in all formulas
-        module_type = first_part
+        namespace = first_part[1:]
 
         # Try to find the file in any formula
         for root in roots:
-            full_path = os.path.join(root, module_type, file_name)
-            if os.path.isfile(full_path):
-                stat = os.stat(full_path)
+            namespace_dir = resolve_namespace_dir(
+                Path(root), detect_package_type(Path(root)), namespace
+            )
+            if namespace_dir is None:
+                continue
+            full_path = namespace_dir / file_name
+            if full_path.is_file():
+                stat = full_path.stat()
                 return {
-                    'path': full_path,
+                    'path': str(full_path),
                     'rel': path,
                     'stat': tuple(stat),
                     'back': 'bundlefs',
@@ -201,25 +209,35 @@ def file_list(load):
                     '_runners', '_output', '_utils', '_pillar', '_engines', '_proxy', '_beacons'}
 
     for root in roots:
-        formula_name = Path(root).name
-        for dirpath, _, filenames in os.walk(root):
-            dir_rel = os.path.relpath(dirpath, root)
+        package_path = Path(root)
+        formula_name = package_path.name
+        package_type = detect_package_type(package_path)
+        namespace_paths = {
+            namespace_path: f"_{namespace}"
+            for namespace in (name[1:] for name in special_dirs)
+            if (namespace_path := resolve_namespace_dir(package_path, package_type, namespace))
+            is not None
+        }
+        for namespace_path, exposed_namespace in namespace_paths.items():
+            for file_path in namespace_path.rglob("*"):
+                if file_path.is_file():
+                    result.add(
+                        f"{exposed_namespace}/{file_path.relative_to(namespace_path).as_posix()}"
+                    )
+
+        for dirpath, directories, filenames in os.walk(root):
+            directories[:] = [
+                directory
+                for directory in directories
+                if Path(dirpath, directory) not in namespace_paths
+            ]
 
             # Check if we're in a special directory
-            first_dir = dir_rel.split('/')[0] if dir_rel != '.' else None
-            is_special = first_dir in special_dirs
-
             for filename in filenames:
                 full = os.path.join(dirpath, filename)
                 rel = os.path.relpath(full, root)
-
-                if is_special:
-                    # Expose at root level: _states/incus.py
-                    # Use the full relative path from special dir
-                    result.add(f"{first_dir}/{os.path.relpath(full, os.path.join(root, first_dir))}")
-                else:
-                    # Regular files with formula prefix: formula/init.sls
-                    result.add(f"{formula_name}/{rel}")
+                # Regular files with formula prefix: formula/init.sls
+                result.add(f"{formula_name}/{rel}")
 
     return sorted(result)
 
@@ -235,10 +253,25 @@ def dir_list(load):
     roots = _get_vendor_roots()
 
     for root in roots:
-        for dirpath, _, _ in os.walk(root):
+        package_path = Path(root)
+        namespace_paths = {
+            namespace_path: f"_{namespace}"
+            for namespace in ("states", "modules", "grains", "renderers", "returners",
+                              "runners", "output", "utils", "pillar", "engines", "proxy", "beacons")
+            if (namespace_path := resolve_namespace_dir(
+                package_path, detect_package_type(package_path), namespace
+            )) is not None
+        }
+        for dirpath, directories, _ in os.walk(root):
+            directories[:] = [
+                directory
+                for directory in directories
+                if Path(dirpath, directory) not in namespace_paths
+            ]
             rel = os.path.relpath(dirpath, root)
             if rel != '.':
                 result.add(rel)
+        result.update(namespace_paths.values())
 
     return sorted(result)
 
@@ -260,9 +293,9 @@ def file_hash(load, fnd):
 
     try:
         import hashlib
-        hash_type = load.get('hash_type', 'sha256')
-        if '__opts__' in globals():
-            hash_type = __opts__.get('hash_type', hash_type)
+        hash_type = globals().get("__opts__", {}).get(
+            "hash_type", load.get("hash_type", "sha256")
+        )
 
         with open(path, 'rb') as f:
             h = hashlib.new(hash_type)
@@ -294,7 +327,7 @@ def serve_file(load, fnd):
 
     try:
         # Get file buffer size from opts (default 262144 bytes = 256KB)
-        buffer_size = __opts__.get('file_buffer_size', 262144) if '__opts__' in globals() else 262144
+        buffer_size = globals().get("__opts__", {}).get("file_buffer_size", 262144)
 
         # Get starting position (loc) from load
         loc = load.get('loc', 0)

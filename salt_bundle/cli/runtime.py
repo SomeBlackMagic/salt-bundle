@@ -16,7 +16,7 @@ from salt_bundle.storage.vendor import get_vendor_dir
 def _resolver(project_dir: Path) -> ActivationResolver:
     config = load_saltfile(project_dir)
     return ActivationResolver(
-        top_bundle=load_top_bundle(project_dir / "top_bundle.sls"),
+        top_bundle=load_top_bundle(project_dir / config.runtime.top_bundle_file),
         lock_data=load_lockfile(project_dir),
         vendor_root=get_vendor_dir(project_dir, config.vendor_dir),
     )

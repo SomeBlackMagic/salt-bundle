@@ -4,6 +4,11 @@ from typing import Dict, Any, List, Optional
 from functools import lru_cache
 
 from salt_bundle.salt import runtime_context
+from salt_bundle.package_layout import (
+    detect_package_type,
+    discover_package_paths,
+    resolve_namespace_dir,
+)
 
 log = logging.getLogger(__name__)
 
@@ -78,18 +83,7 @@ def _get_formula_paths(project_dir: Path, vendor_dir: str) -> List[Path]:
     if not root.exists():
         return []
 
-    out = []
-    for item in root.iterdir():
-        if item.name.startswith("."):
-            continue
-        if item.is_symlink():
-            resolved = item.resolve()
-            if resolved.is_dir():
-                out.append(resolved)
-            else:
-                log.warning(f"SaltBundle: skipping symlink {item.name!r} in vendor: target is not a directory or is broken")
-        elif item.is_dir():
-            out.append(item)
+    out = discover_package_paths(root)
 
     if out:
         formula_names = [f.name for f in out]
@@ -129,8 +123,10 @@ def _get_module_dirs(formula_type: str) -> tuple:
     found_modules = []
 
     for formula in formulas:
-        mod_dir = formula / f"_{formula_type}"
-        if mod_dir.exists() and mod_dir.is_dir():
+        mod_dir = resolve_namespace_dir(
+            formula, detect_package_type(formula), formula_type
+        )
+        if mod_dir is not None:
             paths.append(str(mod_dir.absolute()))
             found_formulas.append(formula.name)
 
@@ -158,7 +154,9 @@ def _get_manifest_dirs(
     return tuple(
         str(namespace_path)
         for package_path in package_paths
-        if (namespace_path := Path(package_path) / f"_{namespace}").is_dir()
+        if (namespace_path := resolve_namespace_dir(
+            Path(package_path), detect_package_type(Path(package_path)), namespace
+        )) is not None
     )
 
 

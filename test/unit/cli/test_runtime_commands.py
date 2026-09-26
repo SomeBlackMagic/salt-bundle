@@ -124,3 +124,19 @@ class TestRuntimeCommands(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("state.highstate", result.output)
+
+    def test_runtime_commands_use_the_configured_top_bundle_path(self) -> None:
+        (self.project_dir / "Saltfile").write_text(
+            "runtime:\n  top_bundle_file: environments.sls\n",
+            encoding="utf-8",
+        )
+        (self.project_dir / "top_bundle.sls").unlink()
+        (self.project_dir / "environments.sls").write_text(
+            "base:\n  '*':\n    - community/linux-base\n",
+            encoding="utf-8",
+        )
+
+        result = self.invoke("runtime", "resolve", "web-01")
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("community/linux-base 3.1.4", result.output)

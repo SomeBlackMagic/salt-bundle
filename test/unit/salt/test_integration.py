@@ -73,3 +73,20 @@ class TestSaltIntegration(unittest.TestCase):
         result = pillar.ext_pillar("minion", {})
         self.assertEqual(result["saltbundle"]["formulas"], ["example"])
         self.assertEqual(result["saltbundle"]["vendor_dir"], "vendor")
+
+    def test_fileserver_discovers_two_level_vendor_packages_and_extensions(self) -> None:
+        formula = self.project_dir / "vendor" / "acme" / "formula"
+        extension = self.project_dir / "vendor" / "community" / "k0s"
+        (formula / "_modules").mkdir(parents=True)
+        (formula / "_modules" / "formula.py").touch()
+        extension_modules = extension / "src" / "saltext" / "k0s" / "modules"
+        extension_modules.mkdir(parents=True)
+        (extension_modules / "k0s.py").touch()
+        fileserver._CACHE.update(config_path=None, vendor_roots=None)
+
+        roots = fileserver._get_vendor_roots()
+
+        self.assertIn(str(formula.absolute()), roots)
+        self.assertIn(str(extension.absolute()), roots)
+        self.assertTrue(fileserver.find_file("_modules/formula.py")["path"].endswith("formula.py"))
+        self.assertTrue(fileserver.find_file("_modules/k0s.py")["path"].endswith("k0s.py"))

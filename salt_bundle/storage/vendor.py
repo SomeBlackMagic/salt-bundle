@@ -100,10 +100,19 @@ def get_installed_packages(vendor_dir: Path) -> list[str]:
         return []
 
     packages = []
-    for item in vendor_dir.iterdir():
-        if item.is_dir() and (
-            (item / "FORMULA").exists() or (item / "EXTENSION").exists()
+    for vendor_dir_entry in sorted(vendor_dir.iterdir()):
+        if not vendor_dir_entry.is_dir() or vendor_dir_entry.name.startswith("."):
+            continue
+        if (
+            (vendor_dir_entry / "FORMULA").exists()
+            or (vendor_dir_entry / "EXTENSION").exists()
         ):
-            packages.append(item.name)
+            packages.append(vendor_dir_entry.name)
+            continue
+        for package_dir in sorted(vendor_dir_entry.iterdir()):
+            if package_dir.is_dir() and (
+                (package_dir / "FORMULA").exists() or (package_dir / "EXTENSION").exists()
+            ):
+                packages.append(f"{vendor_dir_entry.name}/{package_dir.name}")
 
     return packages
