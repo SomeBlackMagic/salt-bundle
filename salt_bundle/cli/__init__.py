@@ -18,6 +18,7 @@ try:
     from .repo import add as repo_add_cmd
     from .repo import index as repo_index_cmd
     from .repo import release as repo_release_cmd
+    from . import runtime as runtime_cmd
 except ImportError:
     # Direct execution - add parent directory to path
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -32,6 +33,7 @@ except ImportError:
     from salt_bundle.cli.repo import add as repo_add_cmd
     from salt_bundle.cli.repo import index as repo_index_cmd
     from salt_bundle.cli.repo import release as repo_release_cmd
+    from salt_bundle.cli import runtime as runtime_cmd
 
 
 @click.group()
@@ -64,6 +66,11 @@ def project():
 def repo():
     """Manage Salt repositories - add sources, build index, and publish releases."""
     pass
+
+
+cli.add_command(runtime_cmd.runtime)
+cli.add_command(runtime_cmd.exec)
+cli.add_command(runtime_cmd.ssh)
 
 
 # Register package commands

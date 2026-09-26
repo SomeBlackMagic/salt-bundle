@@ -12,6 +12,7 @@ class LockedDependency(BaseModel):
     digest: str  # format: "sha256:<hex>" or "path" for local path repos
     path: Optional[str] = None  # absolute path for type=path repositories
     type: Literal["formula", "extension"] = "formula"
+    dependencies: dict[str, str] = Field(default_factory=dict)
 
 
 class LockFile(BaseModel):
