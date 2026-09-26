@@ -30,3 +30,7 @@ class PackageNotMaterializedError(ActivationError):
 
 class RuntimeConflictError(ActivationError):
     """Active packages conflict in their runtime contents."""
+
+
+class RuntimeManifestError(ActivationError):
+    """A runtime manifest is malformed or uses an unsupported schema."""
