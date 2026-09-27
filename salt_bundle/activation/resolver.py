@@ -1,5 +1,6 @@
 """Resolve target-specific package activation without mutating project state."""
 
+import logging
 from hashlib import sha256
 from pathlib import Path
 
@@ -19,18 +20,27 @@ from salt_bundle.activation.parser import TopBundle
 from salt_bundle.dependencies.lock_models import LockFile
 
 
+log = logging.getLogger(__name__)
+
+
 class ActivationResolver:
     """Resolve the locked, locally materialized packages active for a target."""
 
     def __init__(
         self,
-        top_bundle: TopBundle,
+        top_bundle: TopBundle | None,
         lock_data: LockFile,
         vendor_root: Path,
+        *,
+        require_bundle_top: bool = False,
+        top_bundle_path: Path | None = None,
     ) -> None:
         self.top_bundle = top_bundle
         self.lock_data = lock_data
         self.vendor_root = vendor_root
+        self.require_bundle_top = require_bundle_top
+        self.top_bundle_path = top_bundle_path or Path("top_bundle.sls")
+        self._legacy_warning_emitted = False
 
     def resolve(
         self,
@@ -46,12 +56,23 @@ class ActivationResolver:
         matcher supports only exact and glob target expressions.
         """
         del grains, pillar
-        environment = self.top_bundle.environments.get(saltenv)
-        direct_packages = (
-            collect_packages(find_matching_rules(target, environment.rules))
-            if environment is not None
-            else []
-        )
+        if self.top_bundle is None:
+            if self.require_bundle_top:
+                raise FileNotFoundError(
+                    f"{self.top_bundle_path.name} is required when "
+                    "runtime.require_bundle_top is true"
+                )
+            self._warn_legacy_activation()
+            direct_packages = [
+                PackageName.parse(name) for name in sorted(self.lock_data.dependencies)
+            ]
+        else:
+            environment = self.top_bundle.environments.get(saltenv)
+            direct_packages = (
+                collect_packages(find_matching_rules(target, environment.rules))
+                if environment is not None
+                else []
+            )
 
         resolved_names = self._include_transitive_dependencies(direct_packages, saltenv)
         packages = tuple(
@@ -64,6 +85,12 @@ class ActivationResolver:
             packages=packages,
             fingerprint=compute_fingerprint(packages, saltenv),
         )
+
+    def _warn_legacy_activation(self) -> None:
+        """Log the compatibility fallback once per resolver instance."""
+        if not self._legacy_warning_emitted:
+            log.warning("top_bundle.sls not found; using legacy global activation mode")
+            self._legacy_warning_emitted = True
 
     def _include_transitive_dependencies(
         self,

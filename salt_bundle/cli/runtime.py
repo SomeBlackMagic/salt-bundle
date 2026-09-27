@@ -20,10 +20,13 @@ from salt_bundle.storage.vendor import get_vendor_dir
 
 def _resolver(project_dir: Path) -> ActivationResolver:
     config = load_saltfile(project_dir)
+    top_bundle_path = project_dir / config.runtime.top_bundle_file
     return ActivationResolver(
-        top_bundle=load_top_bundle(project_dir / config.runtime.top_bundle_file),
+        top_bundle=load_top_bundle(top_bundle_path) if top_bundle_path.is_file() else None,
         lock_data=load_lockfile(project_dir),
         vendor_root=get_vendor_dir(project_dir, config.vendor_dir),
+        require_bundle_top=config.runtime.require_bundle_top,
+        top_bundle_path=top_bundle_path,
     )
 
 
@@ -62,7 +65,11 @@ def explain(ctx: click.Context, target: str, saltenv: str) -> None:
     """Explain why packages are active for TARGET."""
     try:
         resolver = _resolver(ctx.obj["PROJECT_DIR"])
-        environment = resolver.top_bundle.environments.get(saltenv)
+        environment = (
+            resolver.top_bundle.environments.get(saltenv)
+            if resolver.top_bundle is not None
+            else None
+        )
         rules = (
             find_matching_rules(target, environment.rules)
             if environment is not None
@@ -92,9 +99,12 @@ def validate(ctx: click.Context) -> None:
     """Validate each package referenced by top_bundle.sls."""
     try:
         resolver = _resolver(ctx.obj["PROJECT_DIR"])
-        for environment in resolver.top_bundle.environments.values():
-            for rule in environment.rules:
-                resolver.resolve(rule.target_expr, saltenv=environment.name)
+        if resolver.top_bundle is None:
+            resolver.resolve("*")
+        else:
+            for environment in resolver.top_bundle.environments.values():
+                for rule in environment.rules:
+                    resolver.resolve(rule.target_expr, saltenv=environment.name)
     except (ActivationError, OSError, ValueError) as error:
         click.echo(f"Error: {error}", err=True)
         raise click.exceptions.Exit(1) from error
