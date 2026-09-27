@@ -27,3 +27,46 @@ class TestLockfileExtended(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             lock = load_lockfile(tmp)
             self.assertEqual(lock.dependencies, {})
+
+    def test_load_lockfile_parses_transitive_dependency_graph(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project_dir = Path(tmp)
+            (project_dir / "Saltfile.lock").write_text(
+                """dependencies:
+  acme/nginx:
+    version: 1.2.0
+    repository: default
+    url: https://packages.example.test/acme-nginx.tar.gz
+    digest: sha256:abc
+    type: formula
+    dependencies:
+      community/linux-base: 3.1.4
+""",
+                encoding="utf-8",
+            )
+
+            lockfile = load_lockfile(project_dir)
+
+        self.assertEqual(
+            lockfile.dependencies["acme/nginx"].dependencies,
+            {"community/linux-base": "3.1.4"},
+        )
+
+    def test_load_lockfile_without_dependency_graph_remains_compatible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project_dir = Path(tmp)
+            (project_dir / "Saltfile.lock").write_text(
+                """dependencies:
+  acme/nginx:
+    version: 1.2.0
+    repository: default
+    url: https://packages.example.test/acme-nginx.tar.gz
+    digest: sha256:abc
+    type: formula
+""",
+                encoding="utf-8",
+            )
+
+            lockfile = load_lockfile(project_dir)
+
+        self.assertEqual(lockfile.dependencies["acme/nginx"].dependencies, {})
