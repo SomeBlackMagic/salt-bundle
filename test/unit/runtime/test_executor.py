@@ -113,6 +113,24 @@ class TestParallelExecutor(unittest.TestCase):
         self.assertEqual([item.target for item in group_result.results], ["runtime-a-01"])
         self.assertEqual(backend.calls[0][:2], ("runtime-a", ["runtime-a-01"]))
 
+    def test_aggregates_results_by_target_across_runtime_groups(self) -> None:
+        """Expose one unambiguous result mapping for every executed target."""
+        executor = self._executor_module()
+        backend = RecordingBackend()
+        groups = self._groups("runtime-a", "runtime-b")
+
+        result = executor.execute_parallel(
+            groups, backend, self._context(), self._command(), max_workers=2
+        )
+
+        self.assertEqual(
+            result.results_by_target,
+            {
+                "runtime-a-01": result.group_results[0].results[0],
+                "runtime-b-01": result.group_results[1].results[0],
+            },
+        )
+
     def test_executes_groups_concurrently_up_to_max_workers(self) -> None:
         executor = self._executor_module()
         backend = RecordingBackend(delay=0.2)
@@ -170,4 +188,3 @@ class TestParallelExecutor(unittest.TestCase):
         self.assertEqual(by_fingerprint["runtime-b"].results, [])
         self.assertTrue(by_fingerprint["runtime-c"].success)
         self.assertEqual({call[0] for call in backend.calls}, set(groups))
-

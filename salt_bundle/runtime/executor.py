@@ -31,6 +31,15 @@ class ParallelExecutionResult:
     group_results: list[GroupExecutionResult]
 
     @property
+    def results_by_target(self) -> dict[str, ExecutionResult]:
+        """Return successful and failed command results indexed by target."""
+        return {
+            result.target: result
+            for group_result in self.group_results
+            for result in group_result.results
+        }
+
+    @property
     def success(self) -> bool:
         """Return whether every group completed successfully."""
         return all(group_result.success for group_result in self.group_results)
@@ -82,4 +91,3 @@ def _execute_group(
         success=all(result.success for result in results),
         error=None,
     )
-
