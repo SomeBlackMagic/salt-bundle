@@ -82,3 +82,4 @@ def _execute_group(
         success=all(result.success for result in results),
         error=None,
     )
+

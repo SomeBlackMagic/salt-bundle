@@ -3,6 +3,8 @@
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from click.testing import CliRunner
 
@@ -124,6 +126,78 @@ class TestRuntimeCommands(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("state.highstate", result.output)
+
+    @patch("salt_bundle.cli.runtime._execute_runtime", create=True)
+    def test_exec_delegates_to_the_selected_backend_with_runtime_options(
+        self, execute_runtime
+    ) -> None:
+        execute_runtime.return_value = SimpleNamespace(
+            exit_code=0,
+            group_results=[],
+        )
+
+        result = self.invoke(
+            "exec",
+            "--backend",
+            "minion",
+            "--no-parallel",
+            "--max-workers",
+            "2",
+            "web-01",
+            "test.version",
+        )
+
+        self.assertEqual(result.exit_code, 0)
+        execute_runtime.assert_called_once_with(
+            project_dir=self.project_dir,
+            backend_name="minion",
+            target="web-01",
+            function="test.version",
+            parallel=False,
+            max_workers=2,
+        )
+
+    @patch("salt_bundle.cli.runtime._execute_runtime", create=True)
+    def test_ssh_shortcut_delegates_to_exec_with_ssh_backend(self, execute_runtime) -> None:
+        execute_runtime.return_value = SimpleNamespace(
+            exit_code=0,
+            group_results=[],
+        )
+
+        result = self.invoke("ssh", "web-01", "state.highstate")
+
+        self.assertEqual(result.exit_code, 0)
+        execute_runtime.assert_called_once_with(
+            project_dir=self.project_dir,
+            backend_name="ssh",
+            target="web-01",
+            function="state.highstate",
+            parallel=True,
+            max_workers=4,
+        )
+
+    @patch("salt_bundle.cli.runtime._execute_runtime", create=True)
+    def test_exec_returns_one_when_runtime_execution_reports_a_failure(
+        self, execute_runtime
+    ) -> None:
+        execute_runtime.return_value = SimpleNamespace(
+            exit_code=1,
+            group_results=[],
+        )
+
+        result = self.invoke(
+            "exec", "--backend", "ssh", "web-01", "state.highstate"
+        )
+
+        self.assertEqual(result.exit_code, 1)
+        execute_runtime.assert_called_once_with(
+            project_dir=self.project_dir,
+            backend_name="ssh",
+            target="web-01",
+            function="state.highstate",
+            parallel=True,
+            max_workers=4,
+        )
 
     def test_runtime_commands_use_the_configured_top_bundle_path(self) -> None:
         (self.project_dir / "Saltfile").write_text(
