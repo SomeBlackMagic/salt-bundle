@@ -6,10 +6,13 @@ from pathlib import Path
 from time import perf_counter
 
 from salt_bundle.activation.errors import (
+    ExplicitConflictError,
+    NamespaceCollisionError,
     PackageNotMaterializedError,
     SecurityError,
     UnknownPackageError,
 )
+from salt_bundle.activation.conflicts import detect_conflicts
 from salt_bundle.activation.matcher import collect_packages, find_matching_rules
 from salt_bundle.activation.models import (
     ActivePackageSet,
@@ -19,6 +22,7 @@ from salt_bundle.activation.models import (
 )
 from salt_bundle.activation.parser import TopBundle
 from salt_bundle.dependencies.lock_models import LockFile
+from salt_bundle.packaging.types import load_package_meta
 
 
 log = logging.getLogger(__name__)
@@ -81,6 +85,7 @@ class ActivationResolver:
             self._resolved_package(package_name, saltenv)
             for package_name in resolved_names
         )
+        self._raise_on_runtime_conflicts(packages)
         active_set = ActivePackageSet(
             target=target,
             saltenv=saltenv,
@@ -97,6 +102,29 @@ class ActivationResolver:
             duration_ms,
         )
         return active_set
+
+    @staticmethod
+    def _raise_on_runtime_conflicts(packages: tuple[ResolvedPackage, ...]) -> None:
+        """Raise the documented activation error for the first runtime conflict."""
+        metadata = {
+            package.name: load_package_meta(package.path)
+            for package in packages
+            if (package.path / "FORMULA").is_file()
+            or (package.path / "EXTENSION").is_file()
+        }
+        report = detect_conflicts(list(packages), metadata)
+        if report.explicit:
+            conflict = report.explicit[0]
+            raise ExplicitConflictError(
+                conflict.packages[0].name.full_name,
+                conflict.packages[1].name.full_name,
+            )
+        if report.collisions:
+            collision = report.collisions[0]
+            raise NamespaceCollisionError(
+                collision.path,
+                [package.name.full_name for package in collision.providers],
+            )
 
     def _warn_legacy_activation(self) -> None:
         """Log the compatibility fallback once per resolver instance."""
