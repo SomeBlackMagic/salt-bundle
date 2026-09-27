@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from pathlib import Path
+from time import perf_counter
 from types import MappingProxyType
 from typing import Callable, Mapping, Sequence
 
@@ -19,6 +21,8 @@ from .base import (
 
 _MANIFEST_PATH_OPTION = "salt_bundle_runtime_manifest_path"
 _PROJECT_ROOT_OPTION = "salt_bundle_runtime_project_root"
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -52,6 +56,7 @@ class MinionRuntimeBackend:
         context: RuntimeContext,
     ) -> PreparedRuntime:
         """Write ``manifest`` to its fingerprint-specific local runtime path."""
+        started_at = perf_counter()
         manifest_path = self._manifest_path(context.cache_dir, manifest.fingerprint)
         save_manifest(manifest, manifest_path)
         state = MinionRuntimeState(
@@ -61,11 +66,18 @@ class MinionRuntimeBackend:
                 | {_PROJECT_ROOT_OPTION: str(context.project_root)}
             ),
         )
-        return PreparedRuntime(
+        prepared = PreparedRuntime(
             manifest=manifest,
             targets=list(targets),
             backend_state=state,
         )
+        log.debug(
+            "SaltBundle minion runtime: fingerprint=%s "
+            "runtime_preparation_duration_ms=%.3f",
+            manifest.fingerprint,
+            (perf_counter() - started_at) * 1000,
+        )
+        return prepared
 
     def execute(
         self,
@@ -82,7 +94,14 @@ class MinionRuntimeBackend:
             raise RuntimeError(
                 "Minion command execution requires a configured transport adapter"
             )
-        return list(self._command_executor(prepared, command))
+        started_at = perf_counter()
+        results = list(self._command_executor(prepared, command))
+        log.debug(
+            "SaltBundle minion runtime: fingerprint=%s execution_duration_ms=%.3f",
+            prepared.manifest.fingerprint,
+            (perf_counter() - started_at) * 1000,
+        )
+        return results
 
     @staticmethod
     def _manifest_path(cache_dir: Path, fingerprint: str) -> Path:

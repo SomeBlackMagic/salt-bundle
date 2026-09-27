@@ -165,15 +165,23 @@ def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, 
     effective_opts = opts if opts is not None else globals().get("__opts__", {})
     manifest = runtime_context.get_manifest(effective_opts)
     if manifest is None:
-        return _get_module_dirs(namespace)
-    return _get_manifest_dirs(
+        paths = _get_module_dirs(namespace)
+    else:
+        paths = _get_manifest_dirs(
+            namespace,
+            manifest.fingerprint,
+            tuple(
+                str(_resolve_manifest_package_path(package.path, effective_opts))
+                for package in manifest.packages
+            ),
+        )
+    log.debug(
+        "SaltBundle loader: target=%s namespace=%s paths=%s",
+        effective_opts.get("id", ""),
         namespace,
-        manifest.fingerprint,
-        tuple(
-            str(_resolve_manifest_package_path(package.path, effective_opts))
-            for package in manifest.packages
-        ),
+        list(paths),
     )
+    return paths
 
 
 def _resolve_manifest_package_path(path: str, opts: Dict[str, Any]) -> Path:

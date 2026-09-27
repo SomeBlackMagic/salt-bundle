@@ -3,6 +3,7 @@
 import logging
 from hashlib import sha256
 from pathlib import Path
+from time import perf_counter
 
 from salt_bundle.activation.errors import (
     PackageNotMaterializedError,
@@ -55,6 +56,7 @@ class ActivationResolver:
         ``grains`` and ``pillar`` are accepted for the documented API; the current
         matcher supports only exact and glob target expressions.
         """
+        started_at = perf_counter()
         del grains, pillar
         if self.top_bundle is None:
             if self.require_bundle_top:
@@ -79,12 +81,22 @@ class ActivationResolver:
             self._resolved_package(package_name, saltenv)
             for package_name in resolved_names
         )
-        return ActivePackageSet(
+        active_set = ActivePackageSet(
             target=target,
             saltenv=saltenv,
             packages=packages,
             fingerprint=compute_fingerprint(packages, saltenv),
         )
+        duration_ms = (perf_counter() - started_at) * 1000
+        log.debug(
+            "SaltBundle activation: target=%s fingerprint=%s packages=[%s] "
+            "resolution_duration_ms=%.3f",
+            active_set.target,
+            active_set.fingerprint,
+            ", ".join(package.name.full_name for package in active_set.packages),
+            duration_ms,
+        )
+        return active_set
 
     def _warn_legacy_activation(self) -> None:
         """Log the compatibility fallback once per resolver instance."""

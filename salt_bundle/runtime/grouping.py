@@ -1,9 +1,13 @@
 """Group targets that can share the same activated runtime."""
 
 from dataclasses import dataclass
+import logging
 
 from salt_bundle.activation.manifest import RuntimeManifest, build_manifest
 from salt_bundle.activation.resolver import ActivationResolver
+
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,4 +42,5 @@ def group_targets_by_runtime(
 
     for group in groups.values():
         group.targets.sort()
+    log.debug("SaltBundle runtime grouping: runtime_groups=%s", len(groups))
     return groups

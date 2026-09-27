@@ -64,16 +64,24 @@ _SPECIAL_NAMESPACES = (
 
 def _get_active_roots() -> list[tuple[Path, str]]:
     """Return manifest packages, or retain the legacy vendor scan."""
-    manifest = runtime_context.get_manifest(globals().get("__opts__", {}))
+    opts = globals().get("__opts__", {})
+    manifest = runtime_context.get_manifest(opts)
     if manifest is not None:
-        return [
+        roots = [
             (Path(package.path), package.package_type)
             for package in manifest.packages
         ]
-    return [
-        (Path(root), detect_package_type(Path(root)))
-        for root in _get_vendor_roots()
-    ]
+    else:
+        roots = [
+            (Path(root), detect_package_type(Path(root)))
+            for root in _get_vendor_roots()
+        ]
+    log.debug(
+        "SaltBundle bundlefs: target=%s roots=%s",
+        opts.get("id", ""),
+        [str(root) for root, _ in roots],
+    )
+    return roots
 
 
 def _find_project_config() -> Optional[Path]:

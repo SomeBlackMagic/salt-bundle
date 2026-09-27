@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -12,6 +13,9 @@ from threading import RLock
 
 from .manifest import RuntimeManifest, deserialize_manifest, serialize_manifest
 from .models import ActivePackageSet
+
+
+log = logging.getLogger(__name__)
 
 
 def compute_resolution_cache_key(
@@ -48,8 +52,16 @@ class RuntimeCache:
         path = self._manifest_path(fingerprint)
         with self._lock:
             if not path.is_file():
+                log.debug(
+                    "SaltBundle cache: cache=miss kind=manifest fingerprint=%s",
+                    fingerprint,
+                )
                 return None
-            return deserialize_manifest(path.read_text(encoding="utf-8"))
+            manifest = deserialize_manifest(path.read_text(encoding="utf-8"))
+        log.debug(
+            "SaltBundle cache: cache=hit kind=manifest fingerprint=%s", fingerprint
+        )
+        return manifest
 
     def put_manifest(self, manifest: RuntimeManifest) -> None:
         """Atomically persist ``manifest`` under its runtime fingerprint."""
