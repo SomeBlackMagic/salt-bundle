@@ -56,3 +56,7 @@ class NamespaceCollisionError(RuntimeConflictError):
 
 class RuntimeManifestError(ActivationError):
     """A runtime manifest is malformed or uses an unsupported schema."""
+
+
+class SecurityError(ActivationError):
+    """A runtime package path or its integrity check is unsafe."""

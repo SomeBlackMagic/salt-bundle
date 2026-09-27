@@ -1,9 +1,11 @@
 """Resolve target-specific package activation without mutating project state."""
 
+from hashlib import sha256
 from pathlib import Path
 
 from salt_bundle.activation.errors import (
     PackageNotMaterializedError,
+    SecurityError,
     UnknownPackageError,
 )
 from salt_bundle.activation.matcher import collect_packages, find_matching_rules
@@ -88,6 +90,7 @@ class ActivationResolver:
     ) -> ResolvedPackage:
         entry = self._lock_entry(package_name, saltenv)
         path = self.vendor_root / package_name.full_name
+        validate_package_path(path, self.vendor_root)
         if not path.is_dir():
             raise PackageNotMaterializedError(package_name.full_name, str(path))
         return ResolvedPackage(
@@ -103,3 +106,49 @@ class ActivationResolver:
             return self.lock_data.dependencies[package_name.full_name]
         except KeyError as exc:
             raise UnknownPackageError(package_name.full_name, saltenv) from exc
+
+
+def validate_package_path(path: Path, allowed_root: Path) -> None:
+    """Raise ``SecurityError`` when ``path`` resolves outside ``allowed_root``."""
+    resolved_path = path.resolve()
+    resolved_root = allowed_root.resolve()
+    if not resolved_path.is_relative_to(resolved_root):
+        raise SecurityError(f"Package path '{path}' escapes root '{allowed_root}'")
+
+
+def verify_package_digest(package_path: Path, expected_digest: str) -> None:
+    """Raise ``SecurityError`` if a package tree differs from its expected digest.
+
+    The canonical hash is SHA-256 over every regular file sorted by its relative
+    POSIX path.  Each path and file content is separated by a NUL byte so two
+    distinct trees cannot have an ambiguous byte representation.
+    """
+    if not expected_digest.startswith("sha256:") or len(expected_digest) != 71:
+        raise SecurityError(f"Invalid package digest: {expected_digest!r}")
+    try:
+        int(expected_digest.removeprefix("sha256:"), 16)
+    except ValueError as exc:
+        raise SecurityError(f"Invalid package digest: {expected_digest!r}") from exc
+
+    if not package_path.is_dir():
+        raise SecurityError(f"Package path '{package_path}' is not a directory")
+
+    digest = sha256()
+    for child_path in sorted(package_path.rglob("*")):
+        if child_path.is_symlink():
+            raise SecurityError(f"Package path '{child_path}' contains a symlink")
+        if child_path.is_file():
+            relative_path = child_path.relative_to(package_path).as_posix()
+            digest.update(relative_path.encode("utf-8"))
+            digest.update(b"\0")
+            with child_path.open("rb") as package_file:
+                for chunk in iter(lambda: package_file.read(8192), b""):
+                    digest.update(chunk)
+            digest.update(b"\0")
+
+    actual_digest = f"sha256:{digest.hexdigest()}"
+    if actual_digest != expected_digest:
+        raise SecurityError(
+            f"Package digest mismatch for '{package_path}': "
+            f"expected {expected_digest}, got {actual_digest}"
+        )
