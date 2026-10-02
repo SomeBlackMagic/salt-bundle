@@ -90,7 +90,16 @@ def parse_top_bundle(content: str) -> TopBundle:
                     f"Packages for target {target_expr!r} must be a list"
                 )
 
-            packages = [PackageName.parse(package) for package in raw_packages]
+            packages = []
+            for item in raw_packages:
+                if not isinstance(item, str):
+                    raise BundleTopSyntaxError(
+                        f"Package name must be a string, got {type(item).__name__}: {item!r}"
+                    )
+                try:
+                    packages.append(PackageName.parse(item))
+                except ValueError as exc:
+                    raise BundleTopSyntaxError(str(exc)) from exc
             if len(set(packages)) != len(packages):
                 raise BundleTopSyntaxError(
                     f"Duplicate package in target {target_expr!r}"

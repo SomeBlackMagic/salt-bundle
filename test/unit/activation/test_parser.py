@@ -74,7 +74,7 @@ class TestTopBundleParser(unittest.TestCase):
     def test_parse_rejects_package_name_without_vendor(self) -> None:
         parser = self._parser_module()
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(parser.BundleTopSyntaxError):
             parser.parse_top_bundle("base: {'web-*': [nginx]}")
 
     def test_parse_rejects_duplicate_packages_in_a_rule(self) -> None:
@@ -108,6 +108,18 @@ class TestTopBundleParser(unittest.TestCase):
         top_bundle = parser.parse_top_bundle("base: {}")
 
         self.assertEqual(top_bundle.environments["base"].rules, [])
+
+    def test_parse_rejects_integer_package_name(self) -> None:
+        parser = self._parser_module()
+
+        with self.assertRaises(parser.BundleTopSyntaxError):
+            parser.parse_top_bundle("base: {'web-*': [acme/nginx, 42]}")
+
+    def test_parse_rejects_boolean_package_name(self) -> None:
+        parser = self._parser_module()
+
+        with self.assertRaises(parser.BundleTopSyntaxError):
+            parser.parse_top_bundle("base: {'web-*': [true]}")
 
     def test_load_reads_and_parses_top_bundle_file(self) -> None:
         parser = self._parser_module()
