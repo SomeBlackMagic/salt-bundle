@@ -85,6 +85,23 @@ class TestManifestAwareBundlefs(unittest.TestCase):
         self.assertEqual(extension_module["path"], str(self.extension_modules / "systemd.py"))
         self.assertEqual(fileserver.find_file("_modules/apache.py"), {"path": "", "rel": ""})
 
+    def test_find_file_resolves_clouds_namespace_for_formula_and_extension(self) -> None:
+        clouds_dir = self.active_formula / "_clouds"
+        clouds_dir.mkdir()
+        (clouds_dir / "mycloud.py").write_text("def avail_images(): pass\n")
+
+        ext_clouds = self.extension / "src" / "saltext" / "systemd_helper" / "clouds"
+        ext_clouds.mkdir(parents=True)
+        (ext_clouds / "extcloud.py").write_text("def avail_sizes(): pass\n")
+
+        fileserver.__opts__ = self._opts()
+
+        formula_cloud = fileserver.find_file("_clouds/mycloud.py")
+        extension_cloud = fileserver.find_file("_clouds/extcloud.py")
+
+        self.assertEqual(formula_cloud["path"], str(clouds_dir / "mycloud.py"))
+        self.assertEqual(extension_cloud["path"], str(ext_clouds / "extcloud.py"))
+
     def test_file_and_directory_lists_include_only_active_formula_and_extension_content(self) -> None:
         fileserver.__opts__ = self._opts()
 

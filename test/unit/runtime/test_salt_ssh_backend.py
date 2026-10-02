@@ -166,6 +166,35 @@ class TestSaltSSHRuntimeBackend(unittest.TestCase):
         self.assertTrue(first.backend_state.thin_dir.is_dir())
         self.assertTrue(second.backend_state.thin_dir.is_dir())
 
+    def test_prepare_materializes_clouds_namespace_from_formula(self) -> None:
+        backend_module = self._backend_module()
+        self.assertIsNotNone(
+            backend_module,
+            "Salt SSH backend must provide runtime-specific Thin delivery",
+        )
+        cloud_module = self.vendor_dir / "acme" / "infra" / "_clouds" / "mycloud.py"
+        cloud_module.parent.mkdir(parents=True)
+        cloud_module.write_text("SOURCE = 'mycloud'\n", encoding="utf-8")
+        manifest = self._manifest(
+            "clouds-runtime",
+            ("acme/infra", "formula", "vendor/acme/infra"),
+        )
+
+        prepared = backend_module.SaltSSHRuntimeBackend().prepare(
+            ["ssh-a"], manifest, self._context()
+        )
+
+        payload_dir = prepared.backend_state.thin_dir
+        materialized = payload_dir / "_clouds" / "mycloud.py"
+        self.assertTrue(
+            materialized.exists(),
+            f"Cloud module must be materialized in Thin payload at {materialized}",
+        )
+        self.assertEqual(
+            materialized.read_text(encoding="utf-8"),
+            "SOURCE = 'mycloud'\n",
+        )
+
     def test_execute_delegates_the_prepared_group_to_the_salt_ssh_adapter(self) -> None:
         backend_module = self._backend_module()
         self.assertIsNotNone(

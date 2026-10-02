@@ -21,7 +21,7 @@ _NAMESPACES = (
     "auth",
     "beacons",
     "cache",
-    "cloud",
+    "clouds",
     "engines",
     "executors",
     "grains",
