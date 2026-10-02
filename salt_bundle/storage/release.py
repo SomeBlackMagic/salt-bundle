@@ -12,6 +12,7 @@ from ..packaging.archives import EXTENSION_DIRECTORY_NAMES, pack_package, valida
 from ..packaging.types import detect_package_type
 from .providers.base import ReleaseProvider
 from ..utils.hashing import calculate_sha256
+from ..dependencies.resolver import parse_version
 
 
 class PackageInfo:
@@ -292,7 +293,7 @@ def release_packages(
 
                 # Sort versions (latest first)
                 for name in index.packages:
-                    index.packages[name].sort(key=lambda e: e.version, reverse=True)
+                    index.packages[name].sort(key=lambda e: parse_version(e.version), reverse=True)
 
                 # Update generation timestamp
                 index.generated = datetime.now()

@@ -13,6 +13,7 @@ from .index_models import Index, IndexEntry
 from ..packaging.archives import get_package_info
 from ..utils.hashing import calculate_sha256, verify_digest
 from ..utils.yaml import dump_yaml, load_yaml
+from .resolver import parse_version
 
 
 def generate_index(repo_dir: Path | str, base_url: Optional[str] = None) -> Index:
@@ -96,7 +97,7 @@ def generate_index(repo_dir: Path | str, base_url: Optional[str] = None) -> Inde
 
     # Sort versions (latest first)
     for name in index.packages:
-        index.packages[name].sort(key=lambda e: e.version, reverse=True)
+        index.packages[name].sort(key=lambda e: parse_version(e.version), reverse=True)
 
     # Update generation timestamp
     index.generated = datetime.now()
