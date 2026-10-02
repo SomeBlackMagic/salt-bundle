@@ -98,6 +98,22 @@ salt-call --local \
 
 ## Installation
 
+## Integration tests
+
+Salt loader integration tests run in the Docker image from `test/docker` through
+Test Kitchen. Build the image, then run the default suite:
+
+```bash
+test/docker/build.sh
+bundle install
+bundle exec kitchen test
+```
+
+The suite installs the local package into Salt's Python environment, stages the
+`foo` example package as a project dependency, and verifies its loader modules
+with `salt-call --local`. Remove the test container with `bundle exec kitchen
+destroy` when running individual Kitchen lifecycle commands.
+
 ### From PyPI (when published)
 
 ```bash

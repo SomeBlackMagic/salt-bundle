@@ -1,0 +1,171 @@
+driver:
+  name: docker
+  use_sudo: false
+  cap_add:
+    - SYS_ADMIN
+    - NET_ADMIN
+    - SYS_PTRACE
+  security_opt:
+    - seccomp=unconfined
+    - apparmor=unconfined
+  volume:
+    - /sys/fs/cgroup:/sys/fs/cgroup:rw
+  cgroupns_mode: private
+  binary: env DOCKER_BUILDKIT=0 docker
+  build_context: false
+
+provisioner:
+  name: shell
+  script: test/integration/default/provision.sh
+  uploads:
+    <%= File.join(Dir.pwd, "salt_bundle") %>: /tmp
+    <%= File.join(Dir.pwd, "examples") %>: /tmp
+    <%= File.join(Dir.pwd, "docs") %>: /tmp
+    <%= File.join(Dir.pwd, "pyproject.toml") %>: /tmp/pyproject.toml
+    <%= File.join(Dir.pwd, "test/test_loader.sh") %>: /tmp/test_loader.sh
+    <%= File.join(Dir.pwd, "test/integration/default/Saltfile") %>: /tmp/Saltfile
+    <%= File.join(Dir.pwd, "test/integration/default/verify.sh") %>: /tmp/verify.sh
+
+verifier:
+  name: inspec
+  sudo: true
+
+platforms:
+  - name: debian-12
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-debian-12:3006.24
+      run_command: /lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+  - name: ubuntu-2204
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2204:3006.24
+      run_command: /lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+  - name: ubuntu-2404
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2404:3006.24
+      run_command: /lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+  - name: rockylinux-9
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-rockylinux-9:3006.24
+      run_command: /usr/lib/systemd/systemd
+      username: root
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+    transport:
+      name: docker
+      username: root
+      temp_dir: /var/tmp
+    provisioner:
+      root_path: /var/tmp/kitchen
+      sudo: false
+    verifier:
+      root_path: /var/tmp/verifier
+      sudo: false
+
+  - name: amazonlinux-2023
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-amazonlinux-2023:3006.24
+      run_command: /usr/lib/systemd/systemd
+      username: root
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+    transport:
+      name: docker
+      username: root
+      temp_dir: /var/tmp
+    provisioner:
+      root_path: /var/tmp/kitchen
+      sudo: false
+    verifier:
+      root_path: /var/tmp/verifier
+      sudo: false
+
+  - name: centos-stream-9
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-centos-stream-9:3006.24
+      run_command: /usr/lib/systemd/systemd
+      username: root
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+    transport:
+      name: docker
+      username: root
+      temp_dir: /var/tmp
+    provisioner:
+      root_path: /var/tmp/kitchen
+      sudo: false
+    verifier:
+      root_path: /var/tmp/verifier
+      sudo: false
+
+  - name: almalinux-9
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-almalinux-9:3006.24
+      run_command: /usr/lib/systemd/systemd
+      username: root
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+    transport:
+      name: docker
+      username: root
+      temp_dir: /var/tmp
+    provisioner:
+      root_path: /var/tmp/kitchen
+      sudo: false
+    verifier:
+      root_path: /var/tmp/verifier
+      sudo: false
+
+  - name: opensuse-leap-15
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-opensuse-leap-15:3006.24
+      run_command: /usr/lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+suites:
+  - name: default
+  - name: functional
+    provisioner:
+      script: test/integration/functional/provision.sh
+      uploads:
+        <%= File.join(Dir.pwd, "salt_bundle") %>: /tmp
+        <%= File.join(Dir.pwd, "examples") %>: /tmp
+        <%= File.join(Dir.pwd, "docs") %>: /tmp
+        <%= File.join(Dir.pwd, "pyproject.toml") %>: /tmp/pyproject.toml
+        <%= File.join(Dir.pwd, "test/functional") %>: /tmp/test_functional
+    verifier:
+      name: inspec
+      sudo: true
