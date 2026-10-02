@@ -14,9 +14,6 @@ def load_lockfile(project_dir: Path | str = Path.cwd()) -> LockFile:
 
     Returns:
         LockFile object (empty if file doesn't exist)
-
-    Raises:
-        FileNotFoundError: If Saltfile.lock doesn't exist
     """
     lock_path = Path(project_dir) / 'Saltfile.lock'
     
