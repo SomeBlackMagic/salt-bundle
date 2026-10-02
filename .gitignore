@@ -1,8 +1,10 @@
 *__pycache__*
 .venv
+.kitchen/
 .idea
 *.pyc
 *.egg-info
 dist/
 build/
 *.tgz
+vendor/*

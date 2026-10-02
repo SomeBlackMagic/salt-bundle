@@ -62,5 +62,5 @@ class RuntimeBackend(Protocol):
         self,
         prepared: PreparedRuntime,
         command: SaltCommand,
-    ) -> ExecutionResult:
+    ) -> list[ExecutionResult]:
         """Execute ``command`` through a prepared runtime."""

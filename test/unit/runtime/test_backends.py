@@ -1,6 +1,7 @@
 """Tests for the runtime backend protocol and its shared models."""
 
 import importlib.util
+import typing
 from pathlib import Path
 import unittest
 
@@ -142,4 +143,23 @@ class TestRuntimeBackendContract(unittest.TestCase):
         self.assertEqual(
             [result.return_data for result in results],
             [{"function": "test.version"}, {"function": "test.version"}],
+        )
+
+    def test_protocol_execute_declares_list_return_type(self) -> None:
+        """RuntimeBackend.execute() must declare list[ExecutionResult] return type.
+
+        Regression test for bug #001: the Protocol declared a bare
+        ``ExecutionResult`` return while every implementation and the executor
+        rely on ``list[ExecutionResult]``.
+        """
+        backend = self._backend_module()
+        self.assertIsNotNone(backend, "runtime backend base module must be importable")
+
+        hints = typing.get_type_hints(backend.RuntimeBackend.execute)
+        expected = list[backend.ExecutionResult]
+        self.assertEqual(
+            hints["return"],
+            expected,
+            f"RuntimeBackend.execute() return type must be list[ExecutionResult], "
+            f"got {hints['return']}",
         )
