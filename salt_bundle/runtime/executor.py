@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -11,7 +12,10 @@ from salt_bundle.runtime.backends.base import (
     RuntimeContext,
     SaltCommand,
 )
+from salt_bundle.runtime.errors import BackendExecutionError, BackendPreparationError
 from salt_bundle.runtime.grouping import RuntimeGroup
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -78,7 +82,8 @@ def _execute_group(
     try:
         prepared = backend.prepare(group.targets, group.manifest, context)
         results = list(backend.execute(prepared, command))
-    except Exception as error:
+    except (BackendPreparationError, BackendExecutionError) as error:
+        log.exception("Runtime group execution failed: %s", error)
         return GroupExecutionResult(
             group=group,
             results=[],

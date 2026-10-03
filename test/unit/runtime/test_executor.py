@@ -11,19 +11,31 @@ import unittest
 from salt_bundle.activation.manifest import RuntimeManifest
 from salt_bundle.dependencies.saltfile_models import RuntimeConfig
 from salt_bundle.runtime.backends.base import ExecutionResult, PreparedRuntime, SaltCommand
+from salt_bundle.runtime.errors import BackendExecutionError, BackendPreparationError
 from salt_bundle.runtime.grouping import RuntimeGroup
 
 
 class RecordingBackend:
     """Backend fake that records independent prepare/execute calls."""
 
-    def __init__(self, *, delay: float = 0, failing_fingerprints: set[str] | None = None):
+    def __init__(
+        self,
+        *,
+        delay: float = 0,
+        failing_fingerprints: set[str] | None = None,
+        error_class: type[Exception] = BackendExecutionError,
+        prepare_error_fingerprints: set[str] | None = None,
+    ):
         self.delay = delay
         self.failing_fingerprints = failing_fingerprints or set()
+        self.prepare_error_fingerprints = prepare_error_fingerprints or set()
+        self.error_class = error_class
         self.calls: list[tuple[str, list[str], int]] = []
         self._lock = threading.Lock()
 
     def prepare(self, targets, manifest, context):
+        if manifest.fingerprint in self.prepare_error_fingerprints:
+            raise BackendPreparationError(f"prepare failed {manifest.fingerprint}")
         return PreparedRuntime(manifest=manifest, targets=list(targets), backend_state=None)
 
     def execute(self, prepared, command):
@@ -37,7 +49,7 @@ class RecordingBackend:
                 )
             )
         if prepared.manifest.fingerprint in self.failing_fingerprints:
-            raise RuntimeError(f"failed {prepared.manifest.fingerprint}")
+            raise self.error_class(f"failed {prepared.manifest.fingerprint}")
         if self.delay:
             time.sleep(self.delay)
         return [
@@ -184,7 +196,56 @@ class TestParallelExecutor(unittest.TestCase):
         }
         self.assertTrue(by_fingerprint["runtime-a"].success)
         self.assertFalse(by_fingerprint["runtime-b"].success)
-        self.assertIsInstance(by_fingerprint["runtime-b"].error, RuntimeError)
+        self.assertIsInstance(by_fingerprint["runtime-b"].error, BackendExecutionError)
         self.assertEqual(by_fingerprint["runtime-b"].results, [])
         self.assertTrue(by_fingerprint["runtime-c"].success)
         self.assertEqual({call[0] for call in backend.calls}, set(groups))
+
+    def test_catches_backend_preparation_error_and_marks_group_failed(self) -> None:
+        """BackendPreparationError during prepare is caught and reported."""
+        executor = self._executor_module()
+        backend = RecordingBackend(prepare_error_fingerprints={"runtime-a"})
+        groups = self._groups("runtime-a", "runtime-b")
+
+        result = executor.execute_parallel(
+            groups, backend, self._context(), self._command(), max_workers=2
+        )
+
+        self.assertFalse(result.success)
+        by_fingerprint = {
+            group_result.group.fingerprint: group_result
+            for group_result in result.group_results
+        }
+        self.assertFalse(by_fingerprint["runtime-a"].success)
+        self.assertIsInstance(by_fingerprint["runtime-a"].error, BackendPreparationError)
+        self.assertEqual(by_fingerprint["runtime-a"].results, [])
+        self.assertTrue(by_fingerprint["runtime-b"].success)
+
+    def test_catches_backend_execution_error_and_marks_group_failed(self) -> None:
+        """BackendExecutionError during execute is caught and reported."""
+        executor = self._executor_module()
+        backend = RecordingBackend(failing_fingerprints={"runtime-a"})
+        groups = self._groups("runtime-a")
+
+        result = executor.execute_parallel(
+            groups, backend, self._context(), self._command()
+        )
+
+        self.assertFalse(result.success)
+        group_result = result.group_results[0]
+        self.assertIsInstance(group_result.error, BackendExecutionError)
+        self.assertEqual(group_result.results, [])
+
+    def test_unexpected_exception_propagates_instead_of_being_swallowed(self) -> None:
+        """Unexpected errors like TypeError must not be silently caught."""
+        executor = self._executor_module()
+        backend = RecordingBackend(
+            failing_fingerprints={"runtime-a"},
+            error_class=TypeError,
+        )
+        groups = self._groups("runtime-a")
+
+        with self.assertRaises(TypeError):
+            executor.execute_parallel(
+                groups, backend, self._context(), self._command()
+            )
