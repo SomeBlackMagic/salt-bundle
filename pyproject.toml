@@ -13,6 +13,13 @@ dependencies = [
     "PyGithub>=2.0.0",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "coverage",
+]
+
 [project.scripts]
 salt-bundle = "salt_bundle.cli:main"
 
@@ -62,9 +69,17 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 
+[tool.pytest.ini_options]
+testpaths = ["test"]
+
 [tool.coverage.run]
 source = ["salt_bundle"]
+data_file = ".coverage"
 
 [tool.coverage.report]
 fail_under = 85
 show_missing = true
+skip_covered = false
+
+[tool.coverage.html]
+directory = "htmlcov"

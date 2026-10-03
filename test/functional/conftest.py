@@ -30,7 +30,7 @@ def _find_project_root() -> Path:
         return kitchen_root
 
     # Local: walk up from this file
-    return PROJECT_ROOT
+    return Path(__file__).resolve().parents[2]
 
 
 PROJECT_ROOT = _find_project_root()
