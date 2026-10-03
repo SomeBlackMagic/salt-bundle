@@ -109,6 +109,44 @@ class TestReleaseExtended(unittest.TestCase):
         (pkg_dir / "random_dir").mkdir()
         self.assertFalse(_is_valid_package_layout(pkg_dir, "extension"))
 
+    def test_package_info_has_release_url_attribute(self) -> None:
+        """PackageInfo must declare release_url so it is visible to type checkers."""
+        meta = PackageMeta(name="example", version="1.0.0")
+        info = PackageInfo(Path("."), meta)
+        self.assertIsNone(info.release_url)
+
+    def test_release_url_set_after_upload(self) -> None:
+        """release_packages must set release_url on each released PackageInfo."""
+        formula_dir = self.root / "formulas" / "example"
+        formula_dir.mkdir(parents=True)
+        (formula_dir / "FORMULA").write_text("name: example\nversion: 1.0.0\n", encoding="utf-8")
+        (formula_dir / "init.sls").write_text("test: true\n", encoding="utf-8")
+
+        provider = LocalReleaseProvider(self.root / "repo")
+        released, errors = release_packages(self.root / "formulas", provider)
+
+        self.assertEqual(errors, [])
+        self.assertEqual(len(released), 1)
+        self.assertIsNotNone(released[0].release_url)
+        self.assertIsInstance(released[0].release_url, str)
+
+    def test_release_url_used_in_index_entry(self) -> None:
+        """Index entry url must come from release_url, not from getattr fallback."""
+        formula_dir = self.root / "formulas" / "example"
+        formula_dir.mkdir(parents=True)
+        (formula_dir / "FORMULA").write_text("name: example\nversion: 1.0.0\n", encoding="utf-8")
+        (formula_dir / "init.sls").write_text("test: true\n", encoding="utf-8")
+
+        provider = LocalReleaseProvider(self.root / "repo")
+        released, errors = release_packages(self.root / "formulas", provider)
+
+        self.assertEqual(errors, [])
+        index = provider.load_index()
+        self.assertIsNotNone(index)
+        entry = index.packages["example"][0]
+        # url in index must match the release_url set on the PackageInfo
+        self.assertEqual(entry.url, released[0].release_url)
+
     def test_release_skip_packaging_missing_archive(self) -> None:
         formula_dir = self.root / "formulas" / "example"
         formula_dir.mkdir(parents=True)

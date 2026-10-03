@@ -102,6 +102,14 @@ class TestRuntimeCommands(unittest.TestCase):
         self.assertIn("acme/nginx", result.output)
         self.assertIn("not found", result.output)
 
+    def test_runtime_validate_warns_when_top_bundle_is_missing(self) -> None:
+        (self.project_dir / "top_bundle.sls").unlink()
+
+        result = self.invoke("runtime", "validate")
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("legacy", result.output.lower())
+
     def test_runtime_matrix_displays_each_target_with_its_fingerprint_and_packages(self) -> None:
         result = self.invoke("runtime", "matrix", "web-01", "db-01")
 

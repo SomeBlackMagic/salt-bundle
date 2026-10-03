@@ -88,9 +88,7 @@ def _get_formula_paths(project_dir: Path, vendor_dir: str) -> List[Path]:
     if out:
         formula_names = [f.name for f in out]
         log.debug(f"SaltBundle: discovered formulas: {', '.join(formula_names)}")
-
-    # Save to cache
-    _CACHE['formulas'] = out
+        _CACHE['formulas'] = out
 
     return out
 

@@ -23,6 +23,17 @@ class TestCliCommands(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
 
+    def test_project_init_outputs_sequential_step_numbering(self) -> None:
+        result = self.runner.invoke(project_init, obj=self.context)
+        self.assertEqual(result.exit_code, 0)
+        lines = result.output.splitlines()
+        step_numbers = [
+            int(line.strip().split(".")[0])
+            for line in lines
+            if line.strip() and line.strip()[0].isdigit()
+        ]
+        self.assertEqual(step_numbers, list(range(1, len(step_numbers) + 1)))
+
     def test_initialization_commands_create_manifest_files(self) -> None:
         project_result = self.runner.invoke(project_init, obj=self.context)
         self.assertEqual(project_result.exit_code, 0)

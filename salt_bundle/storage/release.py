@@ -29,6 +29,7 @@ class PackageInfo:
         self.meta = meta
         self.name = meta.name
         self.version = meta.version
+        self.release_url: str | None = None
 
 
 def _is_valid_package_layout(package_dir: Path, package_type: str) -> bool:
@@ -269,7 +270,7 @@ def release_packages(
                         # Create index entry with metadata from formula
                         entry = IndexEntry(
                             version=formula.version,
-                            url=getattr(formula, 'release_url', archive_name),
+                            url=formula.release_url or archive_name,
                             digest=digest,
                             created=datetime.now(),
                             keywords=getattr(formula.meta, "keywords", []),

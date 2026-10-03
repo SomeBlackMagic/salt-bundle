@@ -42,7 +42,6 @@ def add(ctx, name, url):
     - 'salt-bundle project update' to install from repositories
     """
     try:
-        project_dir = ctx.obj['PROJECT_DIR']
         config.add_user_repository(name, url)
         click.echo(f"Added repository globally: {name} -> {url}")
     except ValueError as e:

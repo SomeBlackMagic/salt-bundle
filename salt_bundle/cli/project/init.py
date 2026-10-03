@@ -52,4 +52,4 @@ def init(ctx, force):
     click.echo("\nNext steps:")
     click.echo("  1. Add dependencies to Saltfile")
     click.echo("     Each source must point to a repository containing index.yaml")
-    click.echo("  3. Install dependencies: salt-bundle project install")
+    click.echo("  2. Install dependencies: salt-bundle project install")
