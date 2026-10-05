@@ -69,10 +69,10 @@ class TestCliCommands(unittest.TestCase):
     def test_verify_reports_installed_package(self) -> None:
         (self.project_dir / "Saltfile").write_text("vendor_dir: vendor\n", encoding="utf-8")
         (self.project_dir / "Saltfile.lock").write_text(
-            "dependencies:\n  example:\n    version: 1.0.0\n    repository: source\n    url: example.tgz\n    digest: sha256:abc\n",
+            "dependencies:\n  legacy/example:\n    version: 1.0.0\n    repository: source\n    url: legacy--example.tgz\n    digest: sha256:abc\n",
             encoding="utf-8",
         )
-        package_dir = self.project_dir / "vendor" / "example"
+        package_dir = self.project_dir / "vendor" / "legacy" / "example"
         package_dir.mkdir(parents=True)
         (package_dir / "FORMULA").write_text("name: example\nversion: 1.0.0\n", encoding="utf-8")
         result = self.runner.invoke(verify, obj=self.context)

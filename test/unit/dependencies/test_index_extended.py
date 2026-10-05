@@ -20,7 +20,7 @@ class TestIndexExtended(unittest.TestCase):
             pack_formula(pkg_dir, repo_dir)
 
             generated = index.generate_index(repo_dir, base_url="https://example.com/repo")
-            entry = generated.packages["example"][0]
+            entry = generated.packages["legacy/example"][0]
             self.assertTrue(entry.url.startswith("https://example.com/repo/"))
 
     def test_generate_index_nonexistent_dir_raises(self) -> None:
@@ -42,7 +42,7 @@ class TestIndexExtended(unittest.TestCase):
             idx1 = index.generate_index(repo_dir)
             index.save_index(idx1, repo_dir)
             idx2 = index.generate_index(repo_dir)
-            self.assertEqual(len(idx2.packages["example"]), 1)
+            self.assertEqual(len(idx2.packages["legacy/example"]), 1)
 
     def test_fetch_index_file_scheme(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -58,7 +58,7 @@ class TestIndexExtended(unittest.TestCase):
             index.save_index(idx, repo_dir)
 
             fetched = index.fetch_index(f"file://{repo_dir}")
-            self.assertIn("example", fetched.packages)
+            self.assertIn("legacy/example", fetched.packages)
 
     def test_fetch_index_missing_file_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -121,7 +121,7 @@ class TestIndexExtended(unittest.TestCase):
             pack_formula(pkg_dir, repo_dir)
 
             with self.assertRaises(ValueError):
-                index.download_package("example-1.0.0.tgz", str(repo_dir), "sha256:wrong", cache_dir=cache_dir)
+                index.download_package("legacy--example-1.0.0.tgz", str(repo_dir), "sha256:wrong", cache_dir=cache_dir)
 
     def test_download_package_file_not_found(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

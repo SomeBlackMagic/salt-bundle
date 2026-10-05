@@ -1,0 +1,24 @@
+name: saltext-monitoring
+version: 1.0.0
+description: Salt extension for host monitoring and health checks
+
+maintainers:
+  - name: SRE Team
+    email: sre@example.com
+
+keywords:
+  - monitoring
+  - health-check
+  - metrics
+
+source: https://github.com/example/saltext-monitoring
+
+salt:
+  min_version: "3006"
+  max_version: "3009"
+
+python_requires:
+  - name: psutil
+    version: ">=5.9.0"
+
+dependencies: []

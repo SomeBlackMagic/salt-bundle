@@ -2,9 +2,10 @@
 
 from datetime import datetime
 from typing import Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..packaging.models import Maintainer, FormulaDependency
+from ..packaging.naming import validate_package_name
 
 
 class IndexEntry(BaseModel):
@@ -25,3 +26,11 @@ class Index(BaseModel):
     apiVersion: str = "v1"
     generated: datetime
     packages: dict[str, list[IndexEntry]] = Field(default_factory=dict)
+
+    @field_validator("packages")
+    @classmethod
+    def validate_package_names(cls, value: dict[str, list[IndexEntry]]) -> dict[str, list[IndexEntry]]:
+        invalid_names = [name for name in value if not validate_package_name(name)]
+        if invalid_names:
+            raise ValueError("Index package names must use vendor/package format")
+        return value

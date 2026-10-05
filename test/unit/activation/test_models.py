@@ -29,7 +29,6 @@ class TestPackageName(unittest.TestCase):
             "acme-/nginx",
             "acme/-nginx",
             "acme/nginx-",
-            "acme/nginx_module",
         )
 
         for package_name in invalid_names:

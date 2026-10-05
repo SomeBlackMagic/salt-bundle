@@ -44,4 +44,4 @@ class TestExtensionPackaging(unittest.TestCase):
 
             index = generate_index(package_dir)
 
-            self.assertEqual(index.packages["example-extension"][0].type, "extension")
+            self.assertEqual(index.packages["legacy/example-extension"][0].type, "extension")

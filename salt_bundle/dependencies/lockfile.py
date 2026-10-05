@@ -57,6 +57,10 @@ def add_locked_dependency(
     digest: str,
     path: str | None = None,
     package_type: str = "formula",
+    dependencies: dict[str, str] | None = None,
+    source_type: str = "index",
+    source_path: str | None = None,
+    linked: bool = False,
 ) -> None:
     """Add or update locked dependency.
 
@@ -77,6 +81,10 @@ def add_locked_dependency(
         digest=digest,
         path=path,
         type=package_type,
+        dependencies=dependencies or {},
+        source_type=source_type,
+        source_path=source_path,
+        linked=linked,
     )
 
 

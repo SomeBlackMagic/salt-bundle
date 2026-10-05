@@ -39,6 +39,10 @@ echo "## _executors"
 salt-call --local sys.list_executors | grep test_executor
 
 echo
+echo "## _engines"
+salt-call --local sys.list_engines | grep test_engine
+
+echo
 echo "## _wrappers"
 salt-call --local sys.list_wrappers | grep test_wrapper
 

@@ -9,7 +9,7 @@ class RepositoryConfig(BaseModel):
     """Repository configuration entry."""
     name: str
     url: str
-    type: Literal["remote", "path"] = "remote"
+    type: Literal["remote", "path", "path-source"] = "remote"
 
 
 class UserConfig(BaseModel):

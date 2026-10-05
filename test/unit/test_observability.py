@@ -16,7 +16,7 @@ from salt_bundle.dependencies.saltfile_models import RuntimeConfig
 from salt_bundle.runtime.backends.base import ExecutionResult, RuntimeContext, SaltCommand
 from salt_bundle.runtime.backends.minion import MinionRuntimeBackend
 from salt_bundle.runtime.grouping import group_targets_by_runtime
-from salt_bundle.salt import fileserver, loader
+from salt_bundle.salt import bundlefs, loader
 
 
 class TestTargetAwareRuntimeObservability(unittest.TestCase):
@@ -39,7 +39,8 @@ class TestTargetAwareRuntimeObservability(unittest.TestCase):
             }
         )
         loader._get_manifest_dirs.cache_clear()
-        fileserver.__opts__ = {}
+        loader._logged_namespaces.clear()
+        bundlefs.__opts__ = {}
 
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
@@ -112,10 +113,10 @@ class TestTargetAwareRuntimeObservability(unittest.TestCase):
         manifest = self._manifest(absolute_path=True)
         opts = {"id": "web-01", "salt_bundle_runtime_manifest": manifest}
 
-        with patch.object(fileserver, "__opts__", opts), self.assertLogs(
-            "salt_bundle.salt.fileserver", logging.DEBUG
+        with patch.object(bundlefs, "__opts__", opts), self.assertLogs(
+            "salt_bundle.salt.bundlefs", logging.DEBUG
         ) as logs:
-            roots = fileserver._get_active_roots()
+            roots = bundlefs._get_active_roots()
 
         output = "\n".join(logs.output)
         self.assertEqual(roots, [(self.package_path, "formula")])

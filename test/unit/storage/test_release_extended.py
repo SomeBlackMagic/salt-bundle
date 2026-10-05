@@ -38,7 +38,7 @@ class TestReleaseExtended(unittest.TestCase):
         info = PackageInfo(Path("."), meta)
         idx = Index(
             generated="2024-01-01T00:00:00",
-            packages={"example": [IndexEntry(version="1.0.0", url="x", digest="sha256:x")]},
+            packages={"legacy/example": [IndexEntry(version="1.0.0", url="x", digest="sha256:x")]},
         )
         self.assertFalse(is_new_version(info, idx))
 
@@ -54,7 +54,7 @@ class TestReleaseExtended(unittest.TestCase):
 
         results = discover_packages(formula_dir, single_formula=True)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].name, "my-formula")
+        self.assertEqual(results[0].name, "legacy/my-formula")
 
     def test_discover_skips_invalid_name(self) -> None:
         formula_dir = self.root / "Bad Formula"
@@ -143,7 +143,7 @@ class TestReleaseExtended(unittest.TestCase):
         self.assertEqual(errors, [])
         index = provider.load_index()
         self.assertIsNotNone(index)
-        entry = index.packages["example"][0]
+        entry = index.packages["legacy/example"][0]
         # url in index must match the release_url set on the PackageInfo
         self.assertEqual(entry.url, released[0].release_url)
 

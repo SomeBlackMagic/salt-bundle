@@ -20,6 +20,9 @@ _CACHE = {
     'formulas': None,
 }
 
+# Track which namespaces have already been logged to avoid duplicate messages
+_logged_namespaces: set[str] = set()
+
 
 def _find_project_config():
     """Find project config (with caching)."""
@@ -173,12 +176,14 @@ def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, 
                 for package in manifest.packages
             ),
         )
-    log.debug(
-        "SaltBundle loader: target=%s namespace=%s paths=%s",
-        effective_opts.get("id", ""),
-        namespace,
-        list(paths),
-    )
+    if paths and namespace not in _logged_namespaces:
+        _logged_namespaces.add(namespace)
+        log.debug(
+            "SaltBundle loader: target=%s namespace=%s paths=%s",
+            effective_opts.get("id", ""),
+            namespace,
+            list(paths),
+        )
     return paths
 
 
@@ -354,10 +359,9 @@ def fileserver_dirs(opts: Dict[str, Any] = None) -> List[str]:
     paths = list(_get_loader_dirs(opts, "fileserver"))
 
     # Add bundlefs from salt_bundle package itself
-    bundlefs_path = Path(__file__).parent / "fileserver"
-    if bundlefs_path.exists():
-        paths.append(str(bundlefs_path.absolute()))
-        #log.debug(f"SaltBundle: added bundlefs fileserver from {bundlefs_path}")
+    bundlefs_dir = Path(__file__).parent
+    if (bundlefs_dir / "bundlefs.py").exists():
+        paths.append(str(bundlefs_dir.absolute()))
 
     return paths
 

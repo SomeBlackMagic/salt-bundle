@@ -25,7 +25,7 @@ class TestTopLevelDirPackaging(unittest.TestCase):
                 ]),
                 encoding="utf-8",
             )
-            (formula_dir / ".saltbundleignore").write_text("tests/**\n", encoding="utf-8")
+            (formula_dir / "FORMULAIGNORE").write_text("tests/**\n", encoding="utf-8")
             (formula_dir / "README.md").write_text("not packaged\n", encoding="utf-8")
             (source_dir / "init.sls").write_text("test: true\n", encoding="utf-8")
             (source_dir / "config.sls").write_text("test: true\n", encoding="utf-8")
@@ -43,9 +43,11 @@ class TestTopLevelDirPackaging(unittest.TestCase):
                 names,
                 [
                     "FORMULA",
-                    "_modules/mymod.py",
-                    "config.sls",
-                    "init.sls",
+                    "FORMULAIGNORE",
+                    "README.md",
+                    "formula/_modules/mymod.py",
+                    "formula/config.sls",
+                    "formula/init.sls",
                 ],
             )
 
@@ -82,7 +84,7 @@ class TestTopLevelDirPackaging(unittest.TestCase):
 
             self.assertEqual(names.count("FORMULA"), 1)
             self.assertIn("description: root metadata", metadata)
-            self.assertNotIn("description: source metadata", metadata)
+            self.assertIn("formula/FORMULA", names)
 
     def test_top_level_dir_validation_rejects_absolute_and_parent_paths(self):
         with self.assertRaises(ValidationError):

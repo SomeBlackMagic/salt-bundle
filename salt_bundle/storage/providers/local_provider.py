@@ -69,7 +69,7 @@ class LocalReleaseProvider(ReleaseProvider):
         package_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy archive
-        archive_name = f"{package_name}-{version}.tgz"
+        archive_name = archive_path.name
         target_path = package_dir / archive_name
         shutil.copy2(archive_path, target_path)
 
@@ -78,6 +78,5 @@ class LocalReleaseProvider(ReleaseProvider):
 
     def package_exists(self, package_name: str, version: str) -> bool:
         """Check if package version exists in local storage."""
-        archive_name = f"{package_name}-{version}.tgz"
-        package_path = self.pkg_storage_dir / package_name / archive_name
-        return package_path.exists()
+        package_dir = self.pkg_storage_dir / package_name
+        return any(package_dir.glob(f"*-{version}.tgz")) if package_dir.exists() else False

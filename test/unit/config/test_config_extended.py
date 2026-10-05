@@ -5,10 +5,19 @@ from pathlib import Path
 from unittest.mock import patch
 
 from salt_bundle.config.user_config import get_cache_dir, get_config_dir, load_user_config, save_user_config
-from salt_bundle.config.models import UserConfig
+from salt_bundle.config.models import RepositoryConfig, UserConfig
 
 
 class TestConfigExtended(unittest.TestCase):
+    def test_repository_config_accepts_path_source_type(self) -> None:
+        repository = RepositoryConfig(
+            name="local-formulas",
+            url="/srv/formulas",
+            type="path-source",
+        )
+
+        self.assertEqual(repository.type, "path-source")
+
     def test_get_config_dir_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict(os.environ, {"XDG_CONFIG_HOME": ""}, clear=False):

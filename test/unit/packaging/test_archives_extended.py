@@ -14,9 +14,9 @@ from salt_bundle.packaging.archives import (
 
 class TestArchivesExtended(unittest.TestCase):
     def test_validate_package_name(self) -> None:
-        self.assertTrue(validate_package_name("example"))
-        self.assertTrue(validate_package_name("my-formula"))
-        self.assertTrue(validate_package_name("my_formula"))
+        self.assertTrue(validate_package_name("acme/example"))
+        self.assertTrue(validate_package_name("acme/my-formula"))
+        self.assertTrue(validate_package_name("acme/my_formula"))
         self.assertFalse(validate_package_name("Bad Name"))
         self.assertFalse(validate_package_name(""))
 
@@ -86,7 +86,7 @@ class TestArchivesExtended(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 unpack_package(Path(tmp) / "missing.tgz", Path(tmp) / "out")
 
-    def test_pack_formula_with_top_level_dir_nonexistent_raises(self) -> None:
+    def test_pack_formula_with_missing_top_level_dir_keeps_packaging_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             formula_dir = Path(tmp) / "my-formula"
             formula_dir.mkdir()
@@ -94,6 +94,8 @@ class TestArchivesExtended(unittest.TestCase):
                 "name: example\nversion: 1.0.0\ntop_level_dir: nonexistent\n",
                 encoding="utf-8",
             )
+            (formula_dir / "init.sls").write_text("test: true\n", encoding="utf-8")
 
-            with self.assertRaises(FileNotFoundError):
-                pack_formula(formula_dir)
+            archive = pack_formula(formula_dir)
+
+            self.assertTrue(archive.is_file())

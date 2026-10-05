@@ -11,6 +11,7 @@ import requests
 from ..config import get_cache_dir
 from .index_models import Index, IndexEntry
 from ..packaging.archives import get_package_info
+from ..packaging.naming import canonicalize_package_name
 from ..utils.hashing import calculate_sha256, verify_digest
 from ..utils.yaml import dump_yaml, load_yaml
 from .resolver import parse_version
@@ -77,19 +78,20 @@ def generate_index(repo_dir: Path | str, base_url: Optional[str] = None) -> Inde
             )
 
             # Add to index
-            if meta.name not in index.packages:
-                index.packages[meta.name] = []
+            package_name = canonicalize_package_name(meta.name).full_name
+            if package_name not in index.packages:
+                index.packages[package_name] = []
 
             # Update or add version entry
             found = False
-            for i, existing_entry in enumerate(index.packages[meta.name]):
+            for i, existing_entry in enumerate(index.packages[package_name]):
                 if existing_entry.version == meta.version:
-                    index.packages[meta.name][i] = entry
+                    index.packages[package_name][i] = entry
                     found = True
                     break
             
             if not found:
-                index.packages[meta.name].append(entry)
+                index.packages[package_name].append(entry)
 
         except Exception as e:
             print(f"Warning: Failed to process {archive_path}: {e}")

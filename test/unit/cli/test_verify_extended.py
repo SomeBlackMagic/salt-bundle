@@ -27,7 +27,7 @@ class TestVerifyExtended(unittest.TestCase):
     def test_verify_missing_package_reports_error(self) -> None:
         (self.project_dir / "Saltfile").write_text("vendor_dir: vendor\n", encoding="utf-8")
         (self.project_dir / "Saltfile.lock").write_text(
-            "dependencies:\n  missing:\n    version: 1.0.0\n    repository: source\n    url: missing.tgz\n    digest: sha256:abc\n",
+            "dependencies:\n  legacy/missing:\n    version: 1.0.0\n    repository: source\n    url: legacy--missing.tgz\n    digest: sha256:abc\n",
             encoding="utf-8",
         )
         vendor_dir = self.project_dir / "vendor"
@@ -40,10 +40,10 @@ class TestVerifyExtended(unittest.TestCase):
     def test_verify_missing_metadata_reports_error(self) -> None:
         (self.project_dir / "Saltfile").write_text("vendor_dir: vendor\n", encoding="utf-8")
         (self.project_dir / "Saltfile.lock").write_text(
-            "dependencies:\n  example:\n    version: 1.0.0\n    repository: source\n    url: example.tgz\n    digest: sha256:abc\n",
+            "dependencies:\n  legacy/example:\n    version: 1.0.0\n    repository: source\n    url: legacy--example.tgz\n    digest: sha256:abc\n",
             encoding="utf-8",
         )
-        pkg_dir = self.project_dir / "vendor" / "example"
+        pkg_dir = self.project_dir / "vendor" / "legacy" / "example"
         pkg_dir.mkdir(parents=True)
         # No FORMULA or EXTENSION file
 
@@ -53,10 +53,10 @@ class TestVerifyExtended(unittest.TestCase):
     def test_verify_extension_package(self) -> None:
         (self.project_dir / "Saltfile").write_text("vendor_dir: vendor\n", encoding="utf-8")
         (self.project_dir / "Saltfile.lock").write_text(
-            "dependencies:\n  example:\n    version: 1.0.0\n    repository: source\n    url: example.tgz\n    digest: sha256:abc\n",
+            "dependencies:\n  legacy/example:\n    version: 1.0.0\n    repository: source\n    url: legacy--example.tgz\n    digest: sha256:abc\n",
             encoding="utf-8",
         )
-        pkg_dir = self.project_dir / "vendor" / "example"
+        pkg_dir = self.project_dir / "vendor" / "legacy" / "example"
         pkg_dir.mkdir(parents=True)
         (pkg_dir / "EXTENSION").write_text("name: example\nversion: 1.0.0\n", encoding="utf-8")
 

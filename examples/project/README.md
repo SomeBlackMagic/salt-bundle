@@ -1,88 +1,158 @@
-# salt-dependencies Loader Usage Example
+# Salt Bundle Project Example
 
-After installing `salt-bundle` via pip, Salt will automatically pick up the loader.
-
-## Installation
-
-```bash
-pip install salt-bundle
-```
-
-## Usage
-
-1. Create `.salt-dependencies.yaml` in your project root:
-
-```yaml
-project: my-infrastructure
-vendor_dir: vendor
-
-repositories:
-  - name: main
-    url: https://formulas.example.com/
-
-dependencies:
-  foo: "^0.1.0"
-```
-
-2. Resolve and install dependencies:
-
-```bash
-# This will resolve dependencies, pull in transitive ones,
-# create a lock file, and install everything to vendor/
-salt-bundle project update
-```
-
-3. Run Salt commands from the project directory:
-
-```bash
-# Salt will automatically find formulas in vendor/
-salt-call state.apply nginx
-
-# Or via salt-ssh
-salt-ssh '*' state.apply mysql
-
-# Check that formulas are available
-salt-call pillar.get salt-dependencies
-```
-
-## How It Works
-
-1. When executing `salt-call` or `salt-ssh`, Salt loads all installed loaders
-2. Our loader (`salt_bundle.loader`) searches for `.salt-dependencies.yaml` in the current directory
-3. Reads `vendor_dir` from the config
-4. Automatically adds all formulas from `vendor/` to `file_roots`
-5. Formulas become available for use
+Minimal project showing how salt-bundle integrates with Salt.
 
 ## Project Structure
 
 ```
 my-project/
-├── .salt-dependencies.yaml          # Project configuration
-├── vendor/                   # Installed formulas
-│   ├── nginx/
-│   │   ├── init.sls
-│   │   └── config.sls
-│   └── mysql/
-│       ├── init.sls
-│       └── install.sls
-└── states/                   # Your custom states
-    └── webserver.sls
+├── Saltfile                # Project config: dependencies and vendor path
+├── Saltfile.lock           # Generated lock file with pinned versions
+├── salt/                   # Your custom states and target activation
+│   ├── top.sls             # Standard Salt top file (state → target mapping)
+│   ├── top_bundle.sls      # Optional: target-specific formula activation
+│   └── webserver/
+│       └── init.sls
+└── vendor/                 # Installed formulas (managed by salt-bundle)
+    ├── foo/
+    │   ├── _modules/
+    │   ├── _states/
+    │   ├── _grains/
+    │   └── defaults.sls
+    └── bar/
+        └── init.sls
+```
+
+## Quick Start
+
+```bash
+# 1. Install salt-bundle into Salt's Python environment
+pip install salt-bundle
+
+# 2. Initialize a new project (creates Saltfile)
+salt-bundle project init
+
+# 3. Edit Saltfile to declare dependencies
+cat Saltfile
+# vendor_dir: vendor
+# dependencies:
+#   - name: foo
+#     version: "^0.1.0"
+#     source: https://formulas.example.com/
+
+# 4. Resolve and install dependencies into vendor/
+salt-bundle project update
+
+# 5. Run Salt — formulas are discovered automatically
+salt-call --local state.apply foo
+salt-call --local grains.get test_grain
+```
+
+## How It Works
+
+After `pip install salt-bundle`, Salt automatically loads the `salt.loader` entry
+points registered by the package. No changes to `/etc/salt/master` or
+`/etc/salt/minion` are needed.
+
+On every `salt-call` / `salt-ssh` invocation:
+
+1. The loader plugin finds `Saltfile` in the current directory (or parents)
+2. Reads `vendor_dir` to locate installed formulas
+3. Registers formula directories with Salt's loader (`_modules`, `_states`,
+   `_grains`, `_renderers`, etc.)
+4. The bundlefs fileserver backend serves formula state files
+
+## Saltfile Format
+
+```yaml
+vendor_dir: vendor
+
+dependencies:
+  - name: foo
+    version: "^0.1.0"
+    source: https://formulas.example.com/
+
+runtime:
+  top_bundle_file: salt/top_bundle.sls  # target-aware activation rules (default)
+  cache_dir: .salt-bundle/runtime
+  max_workers: 4
+```
+
+## Target-Aware Activation (Optional)
+
+`top_bundle.sls` controls which formulas are active for which minions:
+
+```yaml
+base:
+  '*web*':
+    - nginx
+  '*db*':
+    - mysql
+```
+
+Inspect activation with CLI:
+
+```bash
+salt-bundle runtime resolve web01
+salt-bundle runtime explain web01
+salt-bundle runtime validate
+salt-bundle runtime matrix 'web01' 'db01'
 ```
 
 ## Verification
 
-Make sure the loader is working:
-
 ```bash
-# Should show formulas from vendor/
-salt-call pillar.get salt-dependencies:formulas
+# Check that the loader discovers formulas
+salt-call --local pillar.get saltbundle:formulas
 
-# Check file_roots
-salt-call config.get file_roots
+# List loaded modules from vendor formulas
+salt-call --local sys.list_modules | grep test_module
+
+# List loaded states
+salt-call --local sys.list_state_modules | grep test_state
 ```
 
-## No Salt Configuration Required
+## Reproducible Deployment
 
-No changes to `/etc/salt/master` or `/etc/salt/minion` are needed!
+```bash
+# On another machine / in CI — install exact pinned versions from lock file
+salt-bundle project install
+```
 
-The loader is picked up automatically after `pip install salt-bundle`.
+## Local Formula Development
+
+For a local development loop, point a dependency directly at a package source
+directory. The path is resolved relative to this `Saltfile`; no archive or
+`index.yaml` is required.
+
+```yaml
+dependencies:
+  - name: foo
+    source: path://../packages/foo
+```
+
+`salt-bundle project update` copies a snapshot into `vendor/`. Re-run it after
+changing the local package.
+
+To make source changes visible immediately, opt into link mode:
+
+```yaml
+dependencies:
+  - name: foo
+    source: path://../packages/foo
+    link: true
+```
+
+Link mode creates `vendor/foo` as a symlink and records `digest: linked` in
+`Saltfile.lock`; use it for local development, not portable CI deployments.
+
+For a directory containing several packages, configure a global source
+repository and omit `source` from the dependency:
+
+```yaml
+# ~/.config/salt-bundle/config.yaml
+repositories:
+  - name: local-formulas
+    url: /home/user/workspace/formulas
+    type: path-source
+```

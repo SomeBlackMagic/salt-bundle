@@ -11,13 +11,13 @@ class TestLockfileExtended(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             project_dir = Path(tmp)
             lock = LockFile()
-            add_locked_dependency(lock, "example", "1.0.0", "source", "example.tgz", "sha256:abc")
+            add_locked_dependency(lock, "acme/example", "1.0.0", "source", "example.tgz", "sha256:abc")
             save_lockfile(lock, project_dir)
 
             self.assertTrue(lockfile_exists(project_dir))
             loaded = load_lockfile(project_dir)
-            self.assertIn("example", loaded.dependencies)
-            self.assertEqual(loaded.dependencies["example"].version, "1.0.0")
+            self.assertIn("acme/example", loaded.dependencies)
+            self.assertEqual(loaded.dependencies["acme/example"].version, "1.0.0")
 
     def test_lockfile_exists_false(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -70,3 +70,28 @@ class TestLockfileExtended(unittest.TestCase):
             lockfile = load_lockfile(project_dir)
 
         self.assertEqual(lockfile.dependencies["acme/nginx"].dependencies, {})
+
+    def test_load_lockfile_preserves_path_source_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project_dir = Path(tmp)
+            source_dir = project_dir / "formulas" / "nginx"
+            (project_dir / "Saltfile.lock").write_text(
+                f"""dependencies:
+  legacy/nginx:
+    version: 1.2.0
+    repository: path://../formulas/nginx
+    url: {source_dir}
+    digest: linked
+    source_type: path
+    source_path: {source_dir}
+    linked: true
+""",
+                encoding="utf-8",
+            )
+
+            lockfile = load_lockfile(project_dir)
+
+        dependency = lockfile.dependencies["legacy/nginx"]
+        self.assertEqual(dependency.source_type, "path")
+        self.assertEqual(dependency.source_path, str(source_dir))
+        self.assertTrue(dependency.linked)

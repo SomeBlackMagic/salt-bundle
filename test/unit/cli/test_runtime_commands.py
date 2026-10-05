@@ -46,7 +46,8 @@ class TestRuntimeCommands(unittest.TestCase):
 """,
             encoding="utf-8",
         )
-        (self.project_dir / "top_bundle.sls").write_text(
+        (self.project_dir / "salt").mkdir()
+        (self.project_dir / "salt" / "top_bundle.sls").write_text(
             """base:
   '*':
     - community/linux-base
@@ -103,7 +104,7 @@ class TestRuntimeCommands(unittest.TestCase):
         self.assertIn("not found", result.output)
 
     def test_runtime_validate_warns_when_top_bundle_is_missing(self) -> None:
-        (self.project_dir / "top_bundle.sls").unlink()
+        (self.project_dir / "salt" / "top_bundle.sls").unlink()
 
         result = self.invoke("runtime", "validate")
 
@@ -212,7 +213,7 @@ class TestRuntimeCommands(unittest.TestCase):
             "runtime:\n  top_bundle_file: environments.sls\n",
             encoding="utf-8",
         )
-        (self.project_dir / "top_bundle.sls").unlink()
+        (self.project_dir / "salt" / "top_bundle.sls").unlink()
         (self.project_dir / "environments.sls").write_text(
             "base:\n  '*':\n    - community/linux-base\n",
             encoding="utf-8",

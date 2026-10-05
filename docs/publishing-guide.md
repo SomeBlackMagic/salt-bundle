@@ -150,9 +150,9 @@ Salt Bundle automatically excludes:
 - `.git/` - Git repository data
 - `__pycache__/` - Python cache
 - `*.pyc`, `*.pyo` - Compiled Python
-- `.saltbundleignore` - Custom exclusions (like `.gitignore`)
+- `FORMULAIGNORE` - Custom exclusions (like `.gitignore`)
 
-**Example `.saltbundleignore`:**
+**Example `FORMULAIGNORE`:**
 
 ```
 tests/
@@ -161,7 +161,7 @@ temp/
 .idea/
 ```
 
-If `formula_path` is set in `FORMULA`, keep `.saltbundleignore` next to
+If `formula_path` is set in `FORMULA`, keep `FORMULAIGNORE` next to
 `FORMULA`. Its patterns are matched relative to the formula source directory, not
 relative to the repository root.
 
@@ -477,7 +477,7 @@ salt-call --local \
 tar -tzf my-formula-1.0.0.tgz | grep -E '\.(key|pem|password|secret)'
 ```
 
-**Use `.saltbundleignore`:**
+**Use `FORMULAIGNORE`:**
 
 ```
 # Exclude sensitive files

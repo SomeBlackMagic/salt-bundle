@@ -37,7 +37,7 @@ class TestGenerateIndexSortsVersionsSemantically(unittest.TestCase):
 
             result = generate_index(repo_dir)
 
-        versions = [entry.version for entry in result.packages["myformula"]]
+        versions = [entry.version for entry in result.packages["legacy/myformula"]]
         self.assertEqual(versions, ["10.0.0", "9.0.0", "2.0.0", "1.0.0"])
 
 
@@ -69,7 +69,7 @@ class TestReleasePackagesSortsVersionsSemantically(unittest.TestCase):
             self.assertEqual(len(released), 3)
 
             index = provider.load_index()
-            versions = [entry.version for entry in index.packages["myformula"]]
+            versions = [entry.version for entry in index.packages["legacy/myformula"]]
             self.assertEqual(versions, ["10.0.0", "9.0.0", "1.0.0"])
 
 

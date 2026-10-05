@@ -6,6 +6,8 @@ import tempfile
 import unittest
 
 from salt_bundle.activation import errors, resolver
+from salt_bundle.activation.resolver import ActivationResolver
+from salt_bundle.dependencies.lock_models import LockFile, LockedDependency
 
 
 class TestPackagePathValidation(unittest.TestCase):
@@ -41,6 +43,36 @@ class TestPackagePathValidation(unittest.TestCase):
 
             with self.assertRaises(errors.SecurityError):
                 resolver.validate_package_path(escaped_path, allowed_root)
+
+    def test_activation_allows_an_explicitly_linked_path_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            vendor_root = root / "vendor"
+            source_dir = root / "formulas" / "acme-nginx"
+            source_dir.mkdir(parents=True)
+            (source_dir / "FORMULA").write_text(
+                "name: acme/nginx\nversion: 1.0.0\n", encoding="utf-8"
+            )
+            vendor_root.mkdir()
+            (vendor_root / "acme").mkdir()
+            (vendor_root / "acme" / "nginx").symlink_to(source_dir, target_is_directory=True)
+            lock = LockFile(
+                dependencies={
+                    "acme/nginx": LockedDependency(
+                        version="1.0.0",
+                        repository="path://../formulas/nginx",
+                        url=str(source_dir),
+                        digest="linked",
+                        source_type="path",
+                        source_path=str(source_dir),
+                        linked=True,
+                    )
+                }
+            )
+
+            active_set = ActivationResolver(None, lock, vendor_root).resolve("minion-01")
+
+        self.assertEqual(active_set.packages[0].path, vendor_root / "acme" / "nginx")
 
 
 class TestPackageDigestVerification(unittest.TestCase):
@@ -78,3 +110,10 @@ class TestPackageDigestVerification(unittest.TestCase):
 
             with self.assertRaises(errors.SecurityError):
                 resolver.verify_package_digest(package_path, expected_digest)
+
+    def test_skips_digest_verification_for_linked_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            package_path = Path(directory) / "nginx"
+            package_path.mkdir()
+
+            resolver.verify_package_digest(package_path, "linked")

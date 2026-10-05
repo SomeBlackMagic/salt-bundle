@@ -1,6 +1,6 @@
 [project]
 name = "salt-bundle"
-version = "2.0.0-rc1"
+version = "2.0.0-rc3"
 description = "Salt package manager prototype"
 readme = "docs/README.md"
 requires-python = ">=3.10"
@@ -30,7 +30,7 @@ states_dirs = "salt_bundle.salt.loader:states_dirs"
 state_dirs = "salt_bundle.salt.loader:states_dirs"
 cache_dirs = "salt_bundle.salt.loader:cache_dirs"
 executor_dirs = "salt_bundle.salt.loader:executor_dirs"
-grain_dirs = "salt_bundle.salt.loader:grains_dirs"
+grains_dirs = "salt_bundle.salt.loader:grains_dirs"
 log_handlers_dirs = "salt_bundle.salt.loader:log_handlers_dirs"
 matchers_dirs = "salt_bundle.salt.loader:matchers_dirs"
 metaproxy_dirs = "salt_bundle.salt.loader:metaproxy_dirs"
@@ -46,13 +46,13 @@ outputter_dirs = "salt_bundle.salt.loader:outputter_dirs"
 pkgdb_dirs = "salt_bundle.salt.loader:pkgdb_dirs"
 pkgfiles_dirs = "salt_bundle.salt.loader:pkgfiles_dirs"
 top_dirs = "salt_bundle.salt.loader:top_dirs"
-util_dirs = "salt_bundle.salt.loader:utils_dirs"
+utils_dirs = "salt_bundle.salt.loader:utils_dirs"
 render_dirs = "salt_bundle.salt.loader:render_dirs"
 wrapper_dirs = "salt_bundle.salt.loader:wrapper_dirs"
-engine_dirs = "salt_bundle.salt.loader:engines_dirs"
+engines_dirs = "salt_bundle.salt.loader:engines_dirs"
 proxy_dirs = "salt_bundle.salt.loader:proxy_dirs"
 cloud_dirs = "salt_bundle.salt.loader:cloud_dirs"
-beacon_dirs = "salt_bundle.salt.loader:beacons_dirs"
+beacons_dirs = "salt_bundle.salt.loader:beacons_dirs"
 thorium_dirs = "salt_bundle.salt.loader:thorium_dirs"
 tokens_dirs = "salt_bundle.salt.loader:tokens_dirs"
 wheel_dirs = "salt_bundle.salt.loader:wheel_dirs"
@@ -61,6 +61,9 @@ configure = "salt_bundle.salt.loader:configure"
 
 [project.entry-points."salt.loader.ext_pillar"]
 saltbundle = "salt_bundle.salt.pillar:ext_pillar"
+
+[tool.setuptools.package-data]
+"salt_bundle.packaging.deb" = ["*.sh", "postinst", "prerm"]
 
 [build-system]
 requires = ["setuptools>=64", "wheel", "build"]

@@ -1,0 +1,26 @@
+#!/bin/sh
+set -e
+
+SITE_PACKAGES=$(/opt/saltstack/salt/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+
+# Create symlink for main module
+if [ ! -e "${SITE_PACKAGES}/salt_bundle" ]; then
+  ln -s /opt/saltstack/salt-bundle/lib/salt_bundle "${SITE_PACKAGES}/salt_bundle"
+fi
+
+# Create symlinks for vendor dependencies (directories and .py files)
+for vendoritem in /opt/saltstack/salt-bundle/vendor/*; do
+  basename=$(basename "$vendoritem")
+  # Skip special items
+  case "$basename" in
+    __pycache__|*.dist-info|bin) continue ;;
+  esac
+
+  if [ -d "$vendoritem" ] || [ -f "$vendoritem" ]; then
+    if [ ! -e "${SITE_PACKAGES}/${basename}" ]; then
+      ln -s "$vendoritem" "${SITE_PACKAGES}/${basename}"
+    fi
+  fi
+done
+
+exit 0

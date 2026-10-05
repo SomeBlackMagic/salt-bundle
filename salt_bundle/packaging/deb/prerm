@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+SITE_PACKAGES=$(/opt/saltstack/salt/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+
+# Remove symlinks created by postinst
+if [ -L "${SITE_PACKAGES}/salt_bundle" ]; then
+  rm -f "${SITE_PACKAGES}/salt_bundle"
+fi
+
+# Remove vendor symlinks (directories and files)
+for vendoritem in /opt/saltstack/salt-bundle/vendor/*; do
+  basename=$(basename "$vendoritem")
+  case "$basename" in
+    __pycache__|*.dist-info|bin) continue ;;
+  esac
+
+  if [ -L "${SITE_PACKAGES}/${basename}" ]; then
+    rm -f "${SITE_PACKAGES}/${basename}"
+  fi
+done
+
+exit 0

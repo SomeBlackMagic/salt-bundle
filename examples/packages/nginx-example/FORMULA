@@ -1,0 +1,23 @@
+name: nginx-example
+version: 1.0.0
+description: Example Nginx formula for salt-bundle
+
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+
+keywords:
+  - webserver
+  - nginx
+  - reverse-proxy
+
+sources:
+  - https://github.com/example/salt-nginx
+
+salt:
+  min_version: "3006"
+  max_version: "3009"
+
+dependencies:
+  - name: common
+    version: "^1.0.0"

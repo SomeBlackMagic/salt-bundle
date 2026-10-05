@@ -1,11 +1,13 @@
 """Install dependencies from Saltfile.lock."""
 
 import sys
+from pathlib import Path
 
 import click
 
 from salt_bundle.dependencies import lockfile
 from salt_bundle.dependencies.index import download_package
+from salt_bundle.dependencies.path_source import install_from_path_link, install_from_path_snapshot
 from salt_bundle.dependencies.saltfile import load_saltfile
 from salt_bundle.storage import vendor
 from .update import _sync_salt_extensions
@@ -33,12 +35,19 @@ def install(ctx):
         click.echo("Installing from Saltfile.lock...")
         for package_name, locked_dependency in lock.dependencies.items():
             click.echo(f"Installing {package_name} {locked_dependency.version}...")
-            archive_path = download_package(
-                locked_dependency.url,
-                locked_dependency.repository,
-                locked_dependency.digest,
-            )
-            vendor.install_package_to_vendor(archive_path, package_name, vendor_dir)
+            if locked_dependency.source_type == "path":
+                source_dir = Path(locked_dependency.source_path or "")
+                if locked_dependency.linked:
+                    install_from_path_link(source_dir, package_name, vendor_dir)
+                else:
+                    install_from_path_snapshot(source_dir, package_name, vendor_dir)
+            else:
+                archive_path = download_package(
+                    locked_dependency.url,
+                    locked_dependency.repository,
+                    locked_dependency.digest,
+                )
+                vendor.install_package_to_vendor(archive_path, package_name, vendor_dir)
 
         _sync_salt_extensions()
         click.echo("Installation complete!")

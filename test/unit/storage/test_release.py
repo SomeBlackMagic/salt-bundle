@@ -30,16 +30,16 @@ class TestReleaseAndStorage(unittest.TestCase):
         provider = LocalReleaseProvider(self.root / "repository")
 
         discovered = discover_packages(self.packages_dir)
-        self.assertEqual([(item.name, item.version) for item in discovered], [("example", "1.0.0")])
+        self.assertEqual([(item.name, item.version) for item in discovered], [("legacy/example", "1.0.0")])
 
         released, errors = release_packages(self.packages_dir, provider)
 
         self.assertEqual(errors, [])
-        self.assertEqual([(item.name, item.version) for item in released], [("example", "1.0.0")])
+        self.assertEqual([(item.name, item.version) for item in released], [("legacy/example", "1.0.0")])
         index = provider.load_index()
         self.assertIsNotNone(index)
-        self.assertIn("example", index.packages)
-        self.assertTrue((self.root / "repository" / "example" / "example-1.0.0.tgz").exists())
+        self.assertIn("legacy/example", index.packages)
+        self.assertTrue((self.root / "repository" / "legacy" / "example" / "legacy--example-1.0.0.tgz").exists())
 
     def test_dry_run_does_not_initialize_or_write_provider(self) -> None:
         provider = LocalReleaseProvider(self.root / "repository")
@@ -70,7 +70,7 @@ class TestReleaseAndStorage(unittest.TestCase):
 
         provider = LocalReleaseProvider(self.root / "repository")
         provider.initialize()
-        provider.save_index(Index(generated="2024-01-01T00:00:00", packages={"example": []}))
+        provider.save_index(Index(generated="2024-01-01T00:00:00", packages={"legacy/example": []}))
         released, errors = release_packages(self.packages_dir, provider)
         self.assertEqual(len(released), 1)
         self.assertEqual(errors, [])

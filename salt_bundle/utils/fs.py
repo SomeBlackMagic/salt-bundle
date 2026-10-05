@@ -21,16 +21,16 @@ DEFAULT_IGNORE_PATTERNS = [
 
 
 def load_ignore_patterns(base_dir: Path) -> list[str]:
-    """Load ignore patterns from .saltbundleignore file if exists.
+    """Load ignore patterns from FORMULAIGNORE file if exists.
 
     Args:
-        base_dir: Base directory to look for .saltbundleignore
+        base_dir: Base directory to look for FORMULAIGNORE
 
     Returns:
         List of ignore patterns (always includes defaults)
     """
     patterns = DEFAULT_IGNORE_PATTERNS.copy()
-    ignore_file = base_dir / '.saltbundleignore'
+    ignore_file = base_dir / 'FORMULAIGNORE'
 
     if ignore_file.exists():
         with open(ignore_file, 'r', encoding='utf-8') as f:
@@ -86,7 +86,7 @@ def collect_files(base_dir: Path, patterns: list[str] | None = None) -> list[Pat
 
     Args:
         base_dir: Base directory to scan
-        patterns: Ignore patterns (if None, loads from .saltbundleignore)
+        patterns: Ignore patterns (if None, loads from FORMULAIGNORE)
 
     Returns:
         List of file paths to include in package

@@ -1,14 +1,14 @@
-name: k0s
+name: someblackmagic/k0s
 os: Debian, Ubuntu, Raspbian, Fedora, openSUSE, Suse SLES, FreeBSD, Arch Linux, Alpine, Gentoo
 os_family: Debian, RedHat, Suse, FreeBSD, Arch, Alpine, Gentoo
 version: 0.1.0
-minimum_version: 3006
-maximum_version: 3009
+minimum_version: "3006"
+maximum_version: "3009"
 description: Installs and manages k0s — a lightweight, self-contained Kubernetes distribution
 top_level_dir: k0s
 
 dependencies:
-  - name: bar
+  - name: someblackmagic/bar
     version: ">=1.0.0"
     url: https://example.com/repo/
 

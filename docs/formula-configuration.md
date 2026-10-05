@@ -113,7 +113,7 @@ With this layout:
 ```text
 my-formula/
 ├── FORMULA
-├── .saltbundleignore
+├── FORMULAIGNORE
 ├── README.md
 └── formula/
     ├── init.sls
@@ -128,7 +128,7 @@ formula_path: formula
 ```
 
 The archive will contain `init.sls`, `_modules/mymod.py`, and `FORMULA` at the archive
-root. `.saltbundleignore` is still read from the directory containing `FORMULA`, but its
+root. `FORMULAIGNORE` is still read from the directory containing `FORMULA`, but its
 patterns are matched relative to `formula_path`.
 
 #### `maintainers`
@@ -354,7 +354,7 @@ Example project layout:
 ```text
 my-formula/
 ├── FORMULA
-├── .saltbundleignore
+├── FORMULAIGNORE
 ├── README.md
 ├── ci/
 └── formula/

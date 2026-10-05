@@ -8,7 +8,12 @@ from ..packaging.metadata import load_package_meta
 from ..packaging.extensions import ExtensionMeta
 from ..dependencies.index_models import Index, IndexEntry
 from ..packaging.models import PackageMeta
-from ..packaging.archives import EXTENSION_DIRECTORY_NAMES, pack_package, validate_package_name, validate_semver
+from ..packaging.archives import EXTENSION_DIRECTORY_NAMES, pack_package, validate_semver
+from ..packaging.naming import (
+    archive_filename,
+    canonicalize_package_name,
+    validate_metadata_package_name,
+)
 from ..packaging.types import detect_package_type
 from .providers.base import ReleaseProvider
 from ..utils.hashing import calculate_sha256
@@ -27,7 +32,7 @@ class PackageInfo:
         """
         self.path = path
         self.meta = meta
-        self.name = meta.name
+        self.name = canonicalize_package_name(meta.name).full_name
         self.version = meta.version
         self.release_url: str | None = None
 
@@ -69,7 +74,7 @@ def discover_packages(formulas_dir: Path | str, single_formula: bool = False) ->
             meta = load_package_meta(formulas_dir)
 
             # Validate
-            if not validate_package_name(meta.name):
+            if not validate_metadata_package_name(meta.name):
                 print(f"Warning: Invalid package name in {formulas_dir}: {meta.name}")
                 return formulas
 
@@ -102,7 +107,7 @@ def discover_packages(formulas_dir: Path | str, single_formula: bool = False) ->
             meta = load_package_meta(item)
 
             # Validate
-            if not validate_package_name(meta.name):
+            if not validate_metadata_package_name(meta.name):
                 print(f"Warning: Invalid package name in {item}: {meta.name}")
                 continue
 
@@ -227,7 +232,7 @@ def release_packages(
                     print(f"  Packed: {archive_path.name}")
                 else:
                     # Look for existing archive in temp or formula dir
-                    archive_name = f"{formula.name}-{formula.version}.tgz"
+                    archive_name = archive_filename(formula.meta.name, formula.version)
                     archive_path = temp_dir / archive_name
                     if not archive_path.exists():
                         archive_path = formula.path / archive_name
@@ -261,7 +266,7 @@ def release_packages(
 
                 # Add new releases to index
                 for formula in released:
-                    archive_name = f"{formula.name}-{formula.version}.tgz"
+                    archive_name = archive_filename(formula.meta.name, formula.version)
                     archive_path = temp_dir / archive_name
 
                     if archive_path.exists():

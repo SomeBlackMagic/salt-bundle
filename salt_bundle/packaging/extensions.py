@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 from .models import FormulaDependency, Maintainer
+from .naming import validate_metadata_package_name
 
 
 class PythonDependency(BaseModel):
@@ -39,6 +40,20 @@ class ExtensionMeta(BaseModel):
     website: Optional[str] = None
     source: Optional[str] = None
     issues: Optional[str] = None
+
+    @field_validator("minimum_version", "maximum_version", mode="before")
+    @classmethod
+    def normalize_salt_version(cls, value: object) -> object:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return str(value)
+        return value
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not validate_metadata_package_name(value):
+            raise ValueError("Package name must use vendor/package format")
+        return value
 
     @field_validator("dependencies", mode="before")
     @classmethod

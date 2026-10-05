@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from pathlib import Path
 import tempfile
 import shutil
+from types import SimpleNamespace
 
 
 from salt_bundle.cli.project.update import update
@@ -37,7 +38,7 @@ class TestProjectCommands(unittest.TestCase):
         deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
 dependencies:
-  - name: foo
+  - name: acme/foo
     version: "^1.0.0"
     source: http://repo.example.com
 """)
@@ -48,7 +49,7 @@ dependencies:
             version="1.0.0",
             url="foo-1.0.0.tgz",
             digest="sha256:foo_hash",
-            dependencies=[FormulaDependency(name="bar", version=">=0.5.0")]
+            dependencies=[FormulaDependency(name="acme/bar", version=">=0.5.0")]
         )
         bar_entry = IndexEntry(
             version="0.6.0",
@@ -57,8 +58,8 @@ dependencies:
         )
 
         mock_index = Index(generated="2023-01-01T00:00:00", packages={
-            "foo": [foo_entry],
-            "bar": [bar_entry]
+            "acme/foo": [foo_entry],
+            "acme/bar": [bar_entry]
         })
         mock_fetch_index.return_value = mock_index
         mock_download.return_value = Path("/tmp/fake.tgz")
@@ -68,8 +69,8 @@ dependencies:
         result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("✓ foo 1.0.0 from http://repo.example.com", result.output)
-        self.assertIn("✓ bar 0.6.0 from http://repo.example.com", result.output)
+        self.assertIn("✓ acme/foo 1.0.0 from http://repo.example.com", result.output)
+        self.assertIn("✓ acme/bar 0.6.0 from http://repo.example.com", result.output)
 
         # Check lock file creation
         lock_file = self.project_dir / "Saltfile.lock"
@@ -85,7 +86,7 @@ dependencies:
         deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
 dependencies:
-  - name: nonexistent
+  - name: acme/nonexistent
     version: "1.0.0"
     source: http://repo.example.com
 """)
@@ -96,13 +97,13 @@ dependencies:
         result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
 
         self.assertEqual(result.exit_code, 1)
-        self.assertIn("Error: Could not resolve dependency: nonexistent 1.0.0", result.output)
+        self.assertIn("Error: Could not resolve dependency: acme/nonexistent 1.0.0", result.output)
 
     @patch('salt_bundle.cli.project.update.fetch_index')
     def test_update_rejects_extension_dependency_on_formula(self, mock_fetch_index):
         (self.project_dir / "Saltfile").write_text(
             """dependencies:
-  - name: extension
+  - name: acme/extension
     version: "1.0.0"
     source: http://repo.example.com
 """,
@@ -111,16 +112,16 @@ dependencies:
         mock_fetch_index.return_value = Index(
             generated="2023-01-01T00:00:00",
             packages={
-                "extension": [
+                "acme/extension": [
                     IndexEntry(
                         version="1.0.0",
                         url="extension-1.0.0.tgz",
                         digest="sha256:extension_hash",
                         type="extension",
-                        dependencies=[FormulaDependency(name="formula", version="1.0.0")],
+                        dependencies=[FormulaDependency(name="acme/formula", version="1.0.0")],
                     )
                 ],
-                "formula": [
+                "acme/formula": [
                     IndexEntry(
                         version="1.0.0",
                         url="formula-1.0.0.tgz",
@@ -143,7 +144,7 @@ dependencies:
         deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
 dependencies:
-  - name: foo
+  - name: acme/foo
     version: "1.0.0"
     source: http://repo.example.com
 """)
@@ -153,7 +154,7 @@ dependencies:
             url="foo-1.0.0.tgz",
             digest="sha256:correct_hash"
         )
-        mock_fetch_index.return_value = Index(generated="2023-01-01T00:00:00", packages={"foo": [foo_entry]})
+        mock_fetch_index.return_value = Index(generated="2023-01-01T00:00:00", packages={"acme/foo": [foo_entry]})
 
         # Simulate error in download_package
         mock_download.side_effect = ValueError("Digest mismatch for foo-1.0.0.tgz")
@@ -172,7 +173,7 @@ dependencies:
         deps_yaml = self.project_dir / "Saltfile"
         deps_yaml.write_text("""
 dependencies:
-  - name: foo
+  - name: acme/foo
     version: "1.0.0"
     source: http://repo.example.com
 """)
@@ -180,7 +181,7 @@ dependencies:
         lock_file = self.project_dir / "Saltfile.lock"
         lock_file.write_text("""
 dependencies:
-  foo:
+  acme/foo:
     version: 1.0.0
     repository: http://repo.example.com
     url: foo-1.0.0.tgz
@@ -193,7 +194,7 @@ dependencies:
         result = self.runner.invoke(install, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Installing foo 1.0.0...", result.output)
+        self.assertIn("Installing acme/foo 1.0.0...", result.output)
         mock_download.assert_called_with("foo-1.0.0.tgz", "http://repo.example.com", "sha256:foo_hash")
         self.assertEqual(mock_install_vendor.call_count, 1)
 
@@ -206,6 +207,96 @@ dependencies:
 
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Error: Saltfile.lock not found.", result.output)
+
+    def test_update_installs_snapshot_from_relative_path_source(self):
+        source_dir = Path(self.test_dir) / "formulas" / "nginx"
+        source_dir.mkdir(parents=True)
+        (source_dir / "FORMULA").write_text(
+            "name: nginx\nversion: 1.2.0\n", encoding="utf-8"
+        )
+        (source_dir / "init.sls").write_text("nginx: []\n", encoding="utf-8")
+        (self.project_dir / "Saltfile").write_text(
+            """dependencies:
+  - name: legacy/nginx
+    source: path://../formulas/nginx
+""",
+            encoding="utf-8",
+        )
+
+        result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        installed_dir = self.project_dir / "vendor" / "legacy" / "nginx"
+        self.assertEqual((installed_dir / "init.sls").read_text(encoding="utf-8"), "nginx: []\n")
+        locked = (self.project_dir / "Saltfile.lock").read_text(encoding="utf-8")
+        self.assertIn("source_type: path", locked)
+        self.assertIn("linked: false", locked)
+
+    def test_update_links_path_source_when_dependency_requests_link_mode(self):
+        source_dir = Path(self.test_dir) / "formulas" / "nginx"
+        source_dir.mkdir(parents=True)
+        (source_dir / "FORMULA").write_text(
+            "name: nginx\nversion: 1.2.0\n", encoding="utf-8"
+        )
+        (source_dir / "init.sls").write_text("nginx: []\n", encoding="utf-8")
+        (self.project_dir / "Saltfile").write_text(
+            """dependencies:
+  - name: legacy/nginx
+    source: path://../formulas/nginx
+    link: true
+""",
+            encoding="utf-8",
+        )
+
+        result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        installed_dir = self.project_dir / "vendor" / "legacy" / "nginx"
+        self.assertTrue(installed_dir.is_symlink())
+        self.assertEqual(installed_dir.resolve(), source_dir.resolve())
+        locked = (self.project_dir / "Saltfile.lock").read_text(encoding="utf-8")
+        self.assertIn("digest: linked", locked)
+        self.assertIn("linked: true", locked)
+
+    def test_update_reports_a_missing_path_source(self):
+        missing_dir = Path(self.test_dir) / "formulas" / "missing"
+        (self.project_dir / "Saltfile").write_text(
+            """dependencies:
+  - name: legacy/missing
+    source: path://../formulas/missing
+""",
+            encoding="utf-8",
+        )
+
+        result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn(f"Error: source path not found: {missing_dir}", result.output)
+
+    def test_update_resolves_dependency_from_global_path_source_repository(self):
+        repository_dir = Path(self.test_dir) / "formulas"
+        source_dir = repository_dir / "nginx"
+        source_dir.mkdir(parents=True)
+        (source_dir / "FORMULA").write_text(
+            "name: nginx\nversion: 1.2.0\n", encoding="utf-8"
+        )
+        (source_dir / "init.sls").write_text("nginx: []\n", encoding="utf-8")
+        (self.project_dir / "Saltfile").write_text(
+            "dependencies:\n  - name: legacy/nginx\n", encoding="utf-8"
+        )
+
+        with patch(
+            "salt_bundle.cli.project.update.load_user_config",
+            return_value=SimpleNamespace(
+                repositories=[
+                    SimpleNamespace(url=str(repository_dir), type="path-source")
+                ]
+            ),
+        ):
+            result = self.runner.invoke(update, obj={'PROJECT_DIR': self.project_dir, 'DEBUG': True})
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertTrue((self.project_dir / "vendor" / "legacy" / "nginx" / "init.sls").is_file())
 
 if __name__ == '__main__':
     unittest.main()

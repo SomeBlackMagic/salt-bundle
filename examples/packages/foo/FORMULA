@@ -1,14 +1,15 @@
 name: foo
 version: 0.1.1
-description: Foo formula
+description: Test formula with all Salt loader namespaces
+
 maintainers:
   - name: Developer
     email: dev@example.com
 
+salt:
+  min_version: "3006"
+  max_version: "3009"
+
 dependencies:
   - name: bar
     version: ">=1.0.0"
-
-salt:
-  min_version: '3006'
-  max_version: '3009'

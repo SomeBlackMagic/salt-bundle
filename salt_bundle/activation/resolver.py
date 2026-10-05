@@ -23,6 +23,7 @@ from salt_bundle.activation.models import (
 from salt_bundle.activation.parser import TopBundle
 from salt_bundle.dependencies.lock_models import LockFile
 from salt_bundle.packaging.types import load_package_meta
+from salt_bundle.utils.fs import collect_files, load_ignore_patterns
 
 
 log = logging.getLogger(__name__)
@@ -157,9 +158,20 @@ class ActivationResolver:
     ) -> ResolvedPackage:
         entry = self._lock_entry(package_name, saltenv)
         path = self.vendor_root / package_name.full_name
-        validate_package_path(path, self.vendor_root)
+        validate_package_path(
+            path,
+            self.vendor_root,
+            allow_external_symlink=(entry.source_type == "path" and entry.linked),
+        )
         if not path.is_dir():
             raise PackageNotMaterializedError(package_name.full_name, str(path))
+        metadata = load_package_meta(path) if (path / "FORMULA").is_file() else None
+        if entry.type == "formula" and getattr(metadata, "top_level_dir", None):
+            state_root = path / metadata.top_level_dir
+            if not state_root.is_dir():
+                raise ValueError(
+                    f"Formula '{package_name.full_name}' state root does not exist: {state_root}"
+                )
         return ResolvedPackage(
             name=package_name,
             version=entry.version,
@@ -175,11 +187,16 @@ class ActivationResolver:
             raise UnknownPackageError(package_name.full_name, saltenv) from exc
 
 
-def validate_package_path(path: Path, allowed_root: Path) -> None:
+def validate_package_path(
+    path: Path,
+    allowed_root: Path,
+    *,
+    allow_external_symlink: bool = False,
+) -> None:
     """Raise ``SecurityError`` when ``path`` resolves outside ``allowed_root``."""
     resolved_path = path.resolve()
     resolved_root = allowed_root.resolve()
-    if not resolved_path.is_relative_to(resolved_root):
+    if not resolved_path.is_relative_to(resolved_root) and not allow_external_symlink:
         raise SecurityError(f"Package path '{path}' escapes root '{allowed_root}'")
 
 
@@ -190,6 +207,8 @@ def verify_package_digest(package_path: Path, expected_digest: str) -> None:
     POSIX path.  Each path and file content is separated by a NUL byte so two
     distinct trees cannot have an ambiguous byte representation.
     """
+    if expected_digest == "linked":
+        return
     if not expected_digest.startswith("sha256:") or len(expected_digest) != 71:
         raise SecurityError(f"Invalid package digest: {expected_digest!r}")
     try:
@@ -204,14 +223,22 @@ def verify_package_digest(package_path: Path, expected_digest: str) -> None:
     for child_path in sorted(package_path.rglob("*")):
         if child_path.is_symlink():
             raise SecurityError(f"Package path '{child_path}' contains a symlink")
-        if child_path.is_file():
-            relative_path = child_path.relative_to(package_path).as_posix()
-            digest.update(relative_path.encode("utf-8"))
-            digest.update(b"\0")
-            with child_path.open("rb") as package_file:
-                for chunk in iter(lambda: package_file.read(8192), b""):
-                    digest.update(chunk)
-            digest.update(b"\0")
+    metadata_file = (
+        package_path / "FORMULA"
+        if (package_path / "FORMULA").is_file()
+        else package_path / "EXTENSION"
+    )
+    files = collect_files(package_path, load_ignore_patterns(package_path))
+    if metadata_file.is_file() and metadata_file not in files:
+        files.append(metadata_file)
+    for child_path in sorted(files):
+        relative_path = child_path.relative_to(package_path).as_posix()
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        with child_path.open("rb") as package_file:
+            for chunk in iter(lambda: package_file.read(8192), b""):
+                digest.update(chunk)
+        digest.update(b"\0")
 
     actual_digest = f"sha256:{digest.hexdigest()}"
     if actual_digest != expected_digest:

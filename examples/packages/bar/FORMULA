@@ -1,6 +1,9 @@
 name: bar
 version: 1.0.0
-description: Bar formula (dependency of foo)
+description: Minimal formula example (dependency of foo)
+
 maintainers:
   - name: Developer
     email: dev@example.com
+
+dependencies: []

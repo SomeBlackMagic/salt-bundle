@@ -1,5 +1,6 @@
 """Package management: packing and unpacking formulas."""
 
+import logging
 import re
 import tarfile
 from pathlib import Path
@@ -8,10 +9,16 @@ from typing import Optional
 from .extensions import ExtensionMeta
 from .metadata import load_formula_meta, load_extension_meta
 from .models import PackageMeta
+from .naming import (
+    archive_filename,
+    validate_metadata_package_name,
+    validate_package_name as _validate_namespaced_package_name,
+)
 from .types import get_package_info_from_archive, detect_package_type
 from ..utils.fs import collect_files, load_ignore_patterns
 
-PACKAGE_NAME_PATTERN = re.compile(r'^[a-z0-9_-]+$')
+log = logging.getLogger(__name__)
+
 SEMVER_PATTERN = re.compile(
     r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)'
     r'(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)'
@@ -37,7 +44,7 @@ def validate_package_name(name: str) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    return bool(PACKAGE_NAME_PATTERN.match(name))
+    return _validate_namespaced_package_name(name)
 
 
 def validate_semver(version: str) -> bool:
@@ -78,41 +85,39 @@ def pack_formula(
     # Load and validate metadata
     meta = load_formula_meta(formula_dir)
 
-    if not validate_package_name(meta.name):
+    if not validate_metadata_package_name(meta.name):
         raise ValueError(f"Invalid package name: {meta.name}")
 
     if not validate_semver(meta.version):
         raise ValueError(f"Invalid semver version: {meta.version}")
 
-    if meta.top_level_dir:
-        source_dir = (formula_dir / meta.top_level_dir).resolve()
-        formula_dir_resolved = formula_dir.resolve()
-        if not source_dir.is_relative_to(formula_dir_resolved):
-            raise ValueError(f"top_level_dir escapes formula_dir: {meta.top_level_dir}")
-        if not source_dir.is_dir():
-            raise FileNotFoundError(f"top_level_dir does not exist: {source_dir}")
-    else:
-        source_dir = formula_dir
+    source_dir = formula_dir
+    if meta.top_level_dir and not (formula_dir / meta.top_level_dir).is_dir():
+        log.warning(
+            "top_level_dir does not exist and will not affect package contents: %s",
+            formula_dir / meta.top_level_dir,
+        )
 
-    # Check for at least one .sls file
-    sls_files = list(source_dir.glob('*.sls'))
+    # Validate the declared state root without changing archive layout.
+    state_dir = formula_dir / meta.top_level_dir if meta.top_level_dir else formula_dir
+    if not state_dir.is_dir():
+        state_dir = formula_dir
+    sls_files = list(state_dir.glob('*.sls'))
     if not sls_files:
         raise ValueError(f"No .sls files found in source directory: {source_dir}")
 
     # Collect files to pack
     patterns = load_ignore_patterns(formula_dir)
-    files = collect_files(source_dir, patterns)
+    files = collect_files(formula_dir, patterns)
     formula_file = formula_dir / 'FORMULA'
 
     # Create archive
-    archive_name = f"{meta.name}-{meta.version}.tgz"
+    archive_name = archive_filename(meta.name, meta.version)
     archive_path = output_dir / archive_name
 
     with tarfile.open(archive_path, 'w:gz') as tar:
         for file_path in files:
-            arcname = file_path.relative_to(source_dir)
-            if arcname == Path('FORMULA') and file_path != formula_file:
-                continue
+            arcname = file_path.relative_to(formula_dir)
             tar.add(file_path, arcname=str(arcname))
         if formula_file not in files:
             tar.add(formula_file, arcname='FORMULA')
@@ -128,7 +133,7 @@ def pack_extension(
     extension_dir = Path(extension_dir)
     output_path = extension_dir if output_dir is None else Path(output_dir)
     meta = load_extension_meta(extension_dir)
-    if not validate_package_name(meta.name):
+    if not validate_metadata_package_name(meta.name):
         raise ValueError(f"Invalid package name: {meta.name}")
     if not validate_semver(meta.version):
         raise ValueError(f"Invalid semver version: {meta.version}")
@@ -143,7 +148,7 @@ def pack_extension(
     patterns = load_ignore_patterns(extension_dir)
     files = collect_files(extension_dir, patterns)
     metadata_file = extension_dir / "EXTENSION"
-    archive_path = output_path / f"{meta.name}-{meta.version}.tgz"
+    archive_path = output_path / archive_filename(meta.name, meta.version)
     with tarfile.open(archive_path, "w:gz") as tar:
         for file_path in files:
             if file_path == metadata_file:

@@ -16,11 +16,11 @@ class TestSaltfileConfig(unittest.TestCase):
             vendor_dir="third_party/salt",
             dependencies=[
                 SaltfileDependency(
-                    name="nginx",
+                    name="acme/nginx",
                     version="^2.0.0",
                     source="https://packages.example.test/salt",
                 ),
-                SaltfileDependency(name="common"),
+                SaltfileDependency(name="acme/common"),
             ],
         )
 
@@ -80,3 +80,19 @@ dependencies:
         self.assertEqual(config.runtime.max_workers, 12)
         self.assertTrue(config.runtime.require_bundle_top)
         self.assertEqual(config.dependencies[0].name, "acme/nginx")
+
+    def test_load_saltfile_preserves_link_mode_for_path_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            project_dir = Path(temporary_directory)
+            (project_dir / "Saltfile").write_text(
+                """dependencies:
+  - name: acme/nginx
+    source: path://../formulas/nginx
+    link: true
+""",
+                encoding="utf-8",
+            )
+
+            config = load_saltfile(project_dir)
+
+        self.assertTrue(config.dependencies[0].link)

@@ -13,6 +13,8 @@ from typing import List, Dict, Any, Optional
 from salt_bundle.package_layout import (
     detect_package_type,
     discover_package_paths,
+    resolve_formula_name,
+    resolve_formula_state_root,
     resolve_namespace_dir,
 )
 from salt_bundle.salt import runtime_context
@@ -197,21 +199,18 @@ def find_file(path, saltenv="base", **kwargs):
     if not roots:
         return {'path': '', 'rel': ''}
 
-    parts = path.split('/', 1)
-    if len(parts) < 2:
+    if '/' not in path:
         return {'path': '', 'rel': ''}
 
-    first_part = parts[0]
-    file_name = parts[1]
+    first_part = path.split('/', 1)[0]
 
     # Handle special directories: _states, _modules, etc.
     special_dirs = {f"_{namespace}" for namespace in _SPECIAL_NAMESPACES}
 
     if first_part in special_dirs:
-        # Format: _states/incus.py -> search in all formulas
         namespace = first_part[1:]
+        file_name = path.split('/', 1)[1]
 
-        # Try to find the file in any formula
         for root, package_type in roots:
             namespace_dir = resolve_namespace_dir(
                 root, package_type, namespace
@@ -231,19 +230,29 @@ def find_file(path, saltenv="base", **kwargs):
         for root, package_type in roots:
             if package_type == "extension":
                 continue
-            full_path = root / path
-            if full_path.is_file():
-                stat = full_path.stat()
-                return {
-                    'path': str(full_path),
-                    'rel': path,
-                    'stat': tuple(stat),
-                    'back': 'bundlefs',
-                }
+            try:
+                state_root = resolve_formula_state_root(root)
+            except (FileNotFoundError, ValueError) as exc:
+                log.error("bundlefs: %s", exc)
+                continue
+            formula_name = resolve_formula_name(root)
+            prefix = formula_name + "/"
+            if path.startswith(prefix):
+                rel_path = path[len(prefix):]
+                full_path = state_root / rel_path
+                if full_path.is_file():
+                    stat = full_path.stat()
+                    return {
+                        'path': str(full_path),
+                        'rel': path,
+                        'stat': tuple(stat),
+                        'back': 'bundlefs',
+                    }
 
             # Preserve the legacy formula-name lookup for projects without a manifest.
-            if manifest is None and root.name == first_part:
-                full_path = root / file_name
+            if manifest is None and path.startswith(prefix):
+                rel_path = path[len(prefix):]
+                full_path = root / rel_path
                 if full_path.is_file():
                     stat = full_path.stat()
                     return {
@@ -273,7 +282,7 @@ def file_list(load):
 
     # Special directories that should be exposed at root level for Salt auto-sync
     for package_path, package_type in roots:
-        formula_name = package_path.name
+        formula_name = resolve_formula_name(package_path)
         namespace_paths = {
             namespace_path: f"_{namespace}"
             for namespace in _SPECIAL_NAMESPACES
@@ -290,20 +299,23 @@ def file_list(load):
         if package_type == "extension":
             continue
 
-        for dirpath, directories, filenames in os.walk(package_path):
+        try:
+            state_root = resolve_formula_state_root(package_path)
+        except (FileNotFoundError, ValueError) as exc:
+            log.error("bundlefs: %s", exc)
+            continue
+        for dirpath, directories, filenames in os.walk(state_root):
             directories[:] = [
                 directory
                 for directory in directories
-                if Path(dirpath, directory) not in namespace_paths
+                if not directory.startswith("_")
             ]
 
             # Check if we're in a special directory
             for filename in filenames:
                 full = os.path.join(dirpath, filename)
-                rel = os.path.relpath(full, package_path)
-                # A manifest path already includes the formula's state namespace.
-                # Legacy packages keep their historical formula-name prefix.
-                result.add(rel if manifest is not None else f"{formula_name}/{rel}")
+                rel = os.path.relpath(full, state_root)
+                result.add(f"{formula_name}/{rel}")
 
     return sorted(result)
 
@@ -319,6 +331,7 @@ def dir_list(load):
     roots = _get_active_roots()
 
     for package_path, package_type in roots:
+        formula_name = resolve_formula_name(package_path)
         namespace_paths = {
             namespace_path: f"_{namespace}"
             for namespace in _SPECIAL_NAMESPACES
@@ -330,15 +343,19 @@ def dir_list(load):
             result.update(namespace_paths.values())
             continue
 
-        for dirpath, directories, _ in os.walk(package_path):
+        try:
+            state_root = resolve_formula_state_root(package_path)
+        except (FileNotFoundError, ValueError) as exc:
+            log.error("bundlefs: %s", exc)
+            continue
+        for dirpath, directories, _ in os.walk(state_root):
             directories[:] = [
                 directory
                 for directory in directories
-                if Path(dirpath, directory) not in namespace_paths
+                if not directory.startswith("_")
             ]
-            rel = os.path.relpath(dirpath, package_path)
-            if rel != '.':
-                result.add(rel)
+            rel = os.path.relpath(dirpath, state_root)
+            result.add(formula_name if rel == "." else f"{formula_name}/{rel}")
         result.update(namespace_paths.values())
 
     return sorted(result)

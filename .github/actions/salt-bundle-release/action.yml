@@ -1,5 +1,5 @@
-name: "Salt Bundle Release (GitHub Provider)"
-description: "Packages and publishes Salt formulas using salt-bundle with the GitHub provider."
+name: "Salt Bundle Release"
+description: "Packages and publishes Salt formulas and extensions via salt-bundle with the GitHub release provider."
 
 author: "wir-wolf"
 branding:
@@ -7,30 +7,43 @@ branding:
   color: "blue"
 
 inputs:
-  formulas-dir:
-    description: "Path to a formula or directory containing multiple formulas."
+  packages-dir:
+    description: >
+      Path to a single package (formula or extension) or a directory
+      containing multiple packages.  Each package must have a FORMULA
+      or EXTENSION metadata file.
     required: true
     default: "."
 
   index-branch:
-    description: "Branch where index.yaml will be committed. Default: gh-pages."
+    description: "Branch where index.yaml will be committed."
     required: false
     default: "gh-pages"
 
-  single:
-    description: "If true, treats formulas-dir as a single formula."
-    required: false
-    default: "false"
-
   skip-packaging:
-    description: "If true, skips package creation and uses existing .tgz files."
+    description: "If true, skips archive creation and uses existing .tar.gz files."
     required: false
     default: "false"
 
   dry-run:
-    description: "If true, executes release in dry-run mode."
+    description: "If true, previews the release without making changes."
     required: false
     default: "false"
+
+  python-version:
+    description: "Python version to use."
+    required: false
+    default: "3.10"
+
+  salt-bundle-version:
+    description: "salt-bundle package version constraint (pip format). Leave empty for latest."
+    required: false
+    default: ""
+
+  token:
+    description: "GitHub token for publishing. Defaults to the automatic GITHUB_TOKEN."
+    required: false
+    default: "${{ github.token }}"
 
 runs:
   using: "composite"
@@ -39,59 +52,53 @@ runs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: "${{ inputs.python-version }}"
 
     - name: Install salt-bundle
       shell: bash
       run: |
-        pip3 install --no-cache-dir salt-bundle
+        if [ -n "${{ inputs.salt-bundle-version }}" ]; then
+          pip3 install --no-cache-dir "salt-bundle${{ inputs.salt-bundle-version }}"
+        else
+          pip3 install --no-cache-dir salt-bundle
+        fi
 
     - name: Configure Git
       shell: bash
       run: |
-        git config --global user.name "github-actions[bot]"
+        git config --global user.name  "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-
-    - name: Build release command
-      id: build_cmd
-      shell: bash
-      run: |
-        set -e
-
-        CMD="salt-bundle repo release \
-          --provider github \
-          --formulas-dir '${{ inputs.formulas-dir }}' \
-          --index-branch '${{ inputs.index-branch }}'"
-
-        if [ "${{ inputs.single }}" = "true" ]; then
-          CMD="$CMD --single"
-        fi
-
-        if [ "${{ inputs.skip-packaging }}" = "true" ]; then
-          CMD="$CMD --skip-packaging"
-        fi
-
-        if [ "${{ inputs.dry-run }}" = "true" ]; then
-          CMD="$CMD --dry-run"
-        fi
-
-        echo "cmd=$CMD" >> "$GITHUB_OUTPUT"
 
     - name: Run salt-bundle repo release
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ inputs.token }}
         GITHUB_REPOSITORY: ${{ github.repository }}
       run: |
-        set -e
+        set -euo pipefail
 
-        if [ -z "$GITHUB_TOKEN" ]; then
-          echo "ERROR: GITHUB_TOKEN is not set." >&2
-          exit 1
+        PKG_DIR="${{ inputs.packages-dir }}"
+
+        args=(
+          --provider github
+          --formulas-dir "$PKG_DIR"
+          --index-branch "${{ inputs.index-branch }}"
+        )
+
+        # Explicit flag or auto-detect: FORMULA/EXTENSION in root means single package
+        if [ "${{ inputs.single }}" = "true" ] || [ -f "$PKG_DIR/FORMULA" ] || [ -f "$PKG_DIR/EXTENSION" ]; then
+          args+=( --single )
         fi
 
-        echo "Executing release:"
-        echo "${{ steps.build_cmd.outputs.cmd }}"
+        if [ "${{ inputs.skip-packaging }}" = "true" ]; then
+          args+=( --skip-packaging )
+        fi
 
-        eval "${{ steps.build_cmd.outputs.cmd }}"
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          args+=( --dry-run )
+        fi
+
+        echo "::group::salt-bundle repo release"
+        echo "salt-bundle repo release ${args[*]}"
+        salt-bundle repo release "${args[@]}"
+        echo "::endgroup::"

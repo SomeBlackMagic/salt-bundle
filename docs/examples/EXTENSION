@@ -3,8 +3,8 @@ version: 0.1.0
 description: Custom Salt modules for deploying and managing k0s Kubernetes clusters
 
 # --- Salt compatibility ---
-minimum_version: 3006
-maximum_version: 3009
+minimum_version: "3006"
+maximum_version: "3009"
 
 # --- Entry point: откуда утилита берёт модули ---
 # Структура пакета определяет типы автоматически:

@@ -19,7 +19,7 @@ class TestIndex(unittest.TestCase):
             generated_index = index.generate_index(repository_dir)
             index.save_index(generated_index, repository_dir)
             fetched_index = index.fetch_index(str(repository_dir))
-            entry = fetched_index.packages["example"][0]
+            entry = fetched_index.packages["legacy/example"][0]
             with patch("salt_bundle.dependencies.index.get_cache_dir", return_value=repository_dir / "cache"):
                 downloaded = index.download_package(entry.url, str(repository_dir), entry.digest)
             self.assertEqual(downloaded.read_bytes(), archive_path.read_bytes())

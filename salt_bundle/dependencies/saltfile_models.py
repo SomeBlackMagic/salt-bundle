@@ -2,24 +2,34 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from ..packaging.naming import validate_package_name
 
 
 class RuntimeConfig(BaseModel):
     """Runtime paths and execution defaults for a Salt project."""
 
-    top_bundle_file: str = "top_bundle.sls"
+    top_bundle_file: str = "salt/top_bundle.sls"
     cache_dir: str = ".salt-bundle/runtime"
     max_workers: int = Field(default=4, ge=1)
     require_bundle_top: bool = False
 
 
 class SaltfileDependency(BaseModel):
-    """A package dependency resolved through an index.yaml repository."""
+    """A package dependency resolved through a repository or local path."""
 
     name: str
     version: Optional[str] = None
     source: Optional[str] = None
+    link: bool = False
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not validate_package_name(value):
+            raise ValueError("Dependency name must use vendor/package format")
+        return value
 
 
 class SaltfileConfig(BaseModel):

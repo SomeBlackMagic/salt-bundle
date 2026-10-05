@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from salt_bundle.salt import fileserver, loader, pillar
+from salt_bundle.salt import bundlefs, loader, pillar
 
 
 class TestSaltIntegration(unittest.TestCase):
@@ -21,9 +21,9 @@ class TestSaltIntegration(unittest.TestCase):
         (self.package_dir / "_states" / "example.py").write_text("def present(): return {}\n", encoding="utf-8")
         loader._CACHE.update(config_path=None, config_mtime=None, config_data=None, formulas=None)
         loader._get_module_dirs.cache_clear()
-        fileserver._CACHE.update(config_path=None, vendor_roots=None)
+        bundlefs._CACHE.update(config_path=None, vendor_roots=None)
         loader.__opts__ = {"config_dir": str(self.project_dir / "conf")}
-        fileserver.__opts__ = {"config_dir": str(self.project_dir / "conf"), "file_buffer_size": 4}
+        bundlefs.__opts__ = {"config_dir": str(self.project_dir / "conf"), "file_buffer_size": 4}
 
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
@@ -45,27 +45,27 @@ class TestSaltIntegration(unittest.TestCase):
             self.assertEqual(getattr(loader, function_name)(), [])
         self.assertEqual(loader.configure({"id": "minion"}), {"id": "minion"})
 
-    def test_fileserver_serves_package_and_special_module_files(self) -> None:
-        self.assertEqual(fileserver.__virtual__(), "bundlefs")
-        self.assertEqual(fileserver.envs(), ["base"])
-        formula_file = fileserver.find_file("example/init.sls")
-        module_file = fileserver.find_file("_modules/example.py")
+    def test_bundlefs_serves_package_and_special_module_files(self) -> None:
+        self.assertEqual(bundlefs.__virtual__(), "bundlefs")
+        self.assertEqual(bundlefs.envs(), ["base"])
+        formula_file = bundlefs.find_file("example/init.sls")
+        module_file = bundlefs.find_file("_modules/example.py")
         self.assertTrue(formula_file["path"].endswith("init.sls"))
         self.assertTrue(module_file["path"].endswith("_modules/example.py"))
-        self.assertEqual(fileserver.find_file("missing"), {"path": "", "rel": ""})
-        self.assertEqual(fileserver.find_file("unknown/init.sls"), {"path": "", "rel": ""})
+        self.assertEqual(bundlefs.find_file("missing"), {"path": "", "rel": ""})
+        self.assertEqual(bundlefs.find_file("unknown/init.sls"), {"path": "", "rel": ""})
 
         self.assertEqual(
-            fileserver.file_list({}),
+            bundlefs.file_list({}),
             ["_modules/example.py", "_states/example.py", "example/init.sls"],
         )
-        self.assertIn("_modules", fileserver.dir_list({}))
+        self.assertIn("_modules", bundlefs.dir_list({}))
         expected_hash = hashlib.sha256((self.package_dir / "init.sls").read_bytes()).hexdigest()
-        self.assertEqual(fileserver.file_hash({}, formula_file)["hsum"], expected_hash)
-        self.assertEqual(fileserver.file_hash({}, {}), {})
-        self.assertEqual(fileserver.serve_file({"loc": 0}, formula_file)["data"], b"test")
-        self.assertEqual(fileserver.serve_file({}, {})["data"], "")
-        self.assertTrue(fileserver.update())
+        self.assertEqual(bundlefs.file_hash({}, formula_file)["hsum"], expected_hash)
+        self.assertEqual(bundlefs.file_hash({}, {}), {})
+        self.assertEqual(bundlefs.serve_file({"loc": 0}, formula_file)["data"], b"test")
+        self.assertEqual(bundlefs.serve_file({}, {})["data"], "")
+        self.assertTrue(bundlefs.update())
 
     def test_pillar_reports_project_packages(self) -> None:
         with patch.object(pillar, "__virtualname__", "saltbundle"):
@@ -74,7 +74,7 @@ class TestSaltIntegration(unittest.TestCase):
         self.assertEqual(result["saltbundle"]["formulas"], ["example"])
         self.assertEqual(result["saltbundle"]["vendor_dir"], "vendor")
 
-    def test_fileserver_discovers_two_level_vendor_packages_and_extensions(self) -> None:
+    def test_bundlefs_discovers_two_level_vendor_packages_and_extensions(self) -> None:
         formula = self.project_dir / "vendor" / "acme" / "formula"
         extension = self.project_dir / "vendor" / "community" / "k0s"
         (formula / "_modules").mkdir(parents=True)
@@ -82,11 +82,11 @@ class TestSaltIntegration(unittest.TestCase):
         extension_modules = extension / "src" / "saltext" / "k0s" / "modules"
         extension_modules.mkdir(parents=True)
         (extension_modules / "k0s.py").touch()
-        fileserver._CACHE.update(config_path=None, vendor_roots=None)
+        bundlefs._CACHE.update(config_path=None, vendor_roots=None)
 
-        roots = fileserver._get_vendor_roots()
+        roots = bundlefs._get_vendor_roots()
 
         self.assertIn(str(formula.absolute()), roots)
         self.assertIn(str(extension.absolute()), roots)
-        self.assertTrue(fileserver.find_file("_modules/formula.py")["path"].endswith("formula.py"))
-        self.assertTrue(fileserver.find_file("_modules/k0s.py")["path"].endswith("k0s.py"))
+        self.assertTrue(bundlefs.find_file("_modules/formula.py")["path"].endswith("formula.py"))
+        self.assertTrue(bundlefs.find_file("_modules/k0s.py")["path"].endswith("k0s.py"))

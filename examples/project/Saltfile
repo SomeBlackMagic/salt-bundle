@@ -1,0 +1,6 @@
+vendor_dir: vendor
+
+dependencies:
+  - name: foo
+    version: "^0.1.0"
+    source: file:///srv/salt-repo/

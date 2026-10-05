@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
+from salt_bundle.packaging.types import load_package_meta
+
 
 PackageType = Literal["formula", "extension"]
 
@@ -39,6 +41,30 @@ def resolve_namespace_dir(
             return None
         candidate = package_path / "src" / "saltext" / extension_name / namespace
     return candidate if candidate.is_dir() else None
+
+
+def resolve_formula_state_root(package_path: Path) -> Path:
+    """Return the directory from which a formula exposes Salt state files."""
+    if not (package_path / "FORMULA").is_file():
+        return package_path
+    metadata = load_package_meta(package_path)
+    top_level_dir = getattr(metadata, "top_level_dir", None)
+    state_root = package_path / top_level_dir if top_level_dir else package_path
+    if not state_root.is_dir():
+        raise FileNotFoundError(
+            f"Formula state root does not exist: {state_root}"
+        )
+    return state_root
+
+
+def resolve_formula_name(package_path: Path) -> str:
+    """Return the full namespaced name a formula should be exposed as in the fileserver."""
+    if (package_path / "FORMULA").is_file():
+        metadata = load_package_meta(package_path)
+        name = getattr(metadata, "name", None)
+        if name:
+            return str(name)
+    return package_path.name
 
 
 def discover_package_paths(vendor_path: Path) -> list[Path]:

@@ -64,7 +64,7 @@ class TestVendorCommand(unittest.TestCase):
     def test_vendor_installs_from_lock(self, mock_run, mock_install, mock_download) -> None:
         (self.project_dir / "Saltfile").write_text("vendor_dir: vendor\n", encoding="utf-8")
         (self.project_dir / "Saltfile.lock").write_text(
-            "dependencies:\n  example:\n    version: 1.0.0\n    repository: source\n    url: example.tgz\n    digest: sha256:abc\n",
+            "dependencies:\n  legacy/example:\n    version: 1.0.0\n    repository: source\n    url: legacy--example.tgz\n    digest: sha256:abc\n",
             encoding="utf-8",
         )
         mock_download.return_value = Path("/tmp/fake.tgz")

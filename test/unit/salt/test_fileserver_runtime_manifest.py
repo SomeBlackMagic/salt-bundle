@@ -6,7 +6,7 @@ import unittest
 
 from salt_bundle.activation.manifest import ManifestPackageEntry, RuntimeManifest
 from salt_bundle.activation.models import PackageName
-from salt_bundle.salt import fileserver
+from salt_bundle.salt import bundlefs
 
 
 class TestManifestAwareBundlefs(unittest.TestCase):
@@ -21,6 +21,12 @@ class TestManifestAwareBundlefs(unittest.TestCase):
 
         (self.active_formula / "nginx").mkdir(parents=True)
         (self.active_formula / "nginx" / "init.sls").write_text("nginx: {}\n")
+        (self.active_formula / "FORMULA").write_text(
+            "name: acme/nginx\nversion: 1.0.0\ntop_level_dir: states\n"
+        )
+        (self.active_formula / "states").mkdir()
+        (self.active_formula / "states" / "init.sls").write_text("nginx: {}\n")
+        (self.active_formula / "states" / "config.sls").write_text("nginx: {}\n")
         (self.active_formula / "_modules").mkdir()
         (self.active_formula / "_modules" / "nginx.py").write_text("def present(): pass\n")
 
@@ -36,7 +42,7 @@ class TestManifestAwareBundlefs(unittest.TestCase):
         (self.extension_modules / "systemd.py").write_text("def present(): pass\n")
         (self.extension / "unexpected.sls").write_text("unexpected: {}\n")
 
-        fileserver._CACHE.update(config_path=None, vendor_roots=None)
+        bundlefs._CACHE.update(config_path=None, vendor_roots=None)
 
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
@@ -68,22 +74,35 @@ class TestManifestAwareBundlefs(unittest.TestCase):
         return {"salt_bundle_runtime_manifest": self._manifest()}
 
     def test_find_file_serves_formula_state_from_an_active_package_only(self) -> None:
-        fileserver.__opts__ = self._opts()
+        bundlefs.__opts__ = self._opts()
 
-        found = fileserver.find_file("nginx/init.sls")
+        found = bundlefs.find_file("acme/nginx/init.sls")
 
-        self.assertEqual(found["path"], str(self.active_formula / "nginx" / "init.sls"))
-        self.assertEqual(fileserver.find_file("apache/init.sls"), {"path": "", "rel": ""})
+        self.assertEqual(found["path"], str(self.active_formula / "states" / "init.sls"))
+        self.assertEqual(bundlefs.find_file("contoso/apache/init.sls"), {"path": "", "rel": ""})
 
     def test_find_file_resolves_module_sync_paths_for_formula_and_extension(self) -> None:
-        fileserver.__opts__ = self._opts()
+        bundlefs.__opts__ = self._opts()
 
-        formula_module = fileserver.find_file("_modules/nginx.py")
-        extension_module = fileserver.find_file("_modules/systemd.py")
+        formula_module = bundlefs.find_file("_modules/nginx.py")
+        extension_module = bundlefs.find_file("_modules/systemd.py")
 
         self.assertEqual(formula_module["path"], str(self.active_formula / "_modules" / "nginx.py"))
         self.assertEqual(extension_module["path"], str(self.extension_modules / "systemd.py"))
-        self.assertEqual(fileserver.find_file("_modules/apache.py"), {"path": "", "rel": ""})
+        self.assertEqual(bundlefs.find_file("_modules/apache.py"), {"path": "", "rel": ""})
+
+    def test_top_level_dir_is_the_formula_state_root_but_not_the_loader_root(self) -> None:
+        bundlefs.__opts__ = self._opts()
+
+        found = bundlefs.find_file("acme/nginx/config.sls")
+
+        self.assertEqual(found["path"], str(self.active_formula / "states" / "config.sls"))
+        self.assertNotIn("states/config.sls", bundlefs.file_list({}))
+        self.assertIn("acme/nginx/config.sls", bundlefs.file_list({}))
+        self.assertEqual(
+            bundlefs.find_file("_modules/nginx.py")["path"],
+            str(self.active_formula / "_modules" / "nginx.py"),
+        )
 
     def test_find_file_resolves_clouds_namespace_for_formula_and_extension(self) -> None:
         clouds_dir = self.active_formula / "_clouds"
@@ -94,20 +113,25 @@ class TestManifestAwareBundlefs(unittest.TestCase):
         ext_clouds.mkdir(parents=True)
         (ext_clouds / "extcloud.py").write_text("def avail_sizes(): pass\n")
 
-        fileserver.__opts__ = self._opts()
+        bundlefs.__opts__ = self._opts()
 
-        formula_cloud = fileserver.find_file("_clouds/mycloud.py")
-        extension_cloud = fileserver.find_file("_clouds/extcloud.py")
+        formula_cloud = bundlefs.find_file("_clouds/mycloud.py")
+        extension_cloud = bundlefs.find_file("_clouds/extcloud.py")
 
         self.assertEqual(formula_cloud["path"], str(clouds_dir / "mycloud.py"))
         self.assertEqual(extension_cloud["path"], str(ext_clouds / "extcloud.py"))
 
     def test_file_and_directory_lists_include_only_active_formula_and_extension_content(self) -> None:
-        fileserver.__opts__ = self._opts()
+        bundlefs.__opts__ = self._opts()
 
         self.assertEqual(
-            fileserver.file_list({}),
-            ["_modules/nginx.py", "_modules/systemd.py", "nginx/init.sls"],
+            bundlefs.file_list({}),
+            [
+                "_modules/nginx.py",
+                "_modules/systemd.py",
+                "acme/nginx/config.sls",
+                "acme/nginx/init.sls",
+            ],
         )
-        self.assertEqual(fileserver.dir_list({}), ["_modules", "nginx"])
-        self.assertNotIn("systemd-helper/unexpected.sls", fileserver.file_list({}))
+        self.assertEqual(bundlefs.dir_list({}), ["_modules", "acme/nginx"])
+        self.assertNotIn("community/systemd-helper/unexpected.sls", bundlefs.file_list({}))
