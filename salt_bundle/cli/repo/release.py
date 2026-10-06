@@ -9,10 +9,10 @@ from salt_bundle.storage import release as release_module
 
 
 @click.command()
-@click.option('--formulas-dir', '-f', type=click.Path(exists=True, file_okay=False, dir_okay=True),
-              required=True, help='Directory containing formulas (required)')
+@click.option('--packages-dir', '-d', type=click.Path(exists=True, file_okay=False, dir_okay=True),
+              required=True, help='Directory containing packages (formulas or extensions)')
 @click.option('--single', is_flag=True,
-              help='Treat formulas-dir as a single formula directory (not subdirectories)')
+              help='Treat packages-dir as a single formula directory (not subdirectories)')
 @click.option('--provider', '-p', type=click.Choice(['local', 'github'], case_sensitive=False),
               required=True, help='Release provider: local (filesystem) or github (GitHub releases)')
 @click.option('--pkg-storage-dir', type=click.Path(file_okay=False, dir_okay=True),
@@ -26,13 +26,13 @@ from salt_bundle.storage import release as release_module
 @click.option('--dry-run', is_flag=True,
               help='Show what would be done without doing it')
 @click.pass_context
-def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, version_override, skip_packaging, dry_run):
-    """Release formulas to repository.
+def release(ctx, packages_dir, single, provider, pkg_storage_dir, index_branch, version_override, skip_packaging, dry_run):
+    """Release packages (formulas or extensions) to repository.
 
     Automates the complete release workflow:
-    1. Discovers formulas in the specified directory
+    1. Discovers packages in the specified directory
     2. Detects new versions (not in repository)
-    3. Packages formulas into .tar.gz archives (unless --skip-packaging)
+    3. Packages into .tar.gz archives (unless --skip-packaging)
     4. Publishes packages to provider storage
     5. Updates repository index.yaml
 
@@ -61,26 +61,26 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
 
         Optional: --index-branch (default: gh-pages)
 
-    FORMULAS DISCOVERY:
+    PACKAGE DISCOVERY:
 
-    Default mode (multiple formulas):
-        Expects subdirectories, each containing a formula:
-          formulas/
-            ├── formula-1/
+    Default mode (multiple packages):
+        Expects subdirectories, each containing a FORMULA or EXTENSION:
+          packages/
+            ├── my-formula/
             │   └── FORMULA
-            └── formula-2/
-                └── FORMULA
+            └── my-extension/
+                └── EXTENSION
 
     Single mode (--single):
-        Treats formulas-dir as one formula:
-          my-formula/
-            └── FORMULA
+        Treats packages-dir as one package:
+          my-package/
+            └── FORMULA  (or EXTENSION)
 
     Examples:
 
         # Local provider
         salt-bundle repo release \\
-            --formulas-dir ./formulas \\
+            --packages-dir ./packages \\
             --provider local \\
             --pkg-storage-dir ./repo
 
@@ -88,27 +88,25 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
         export GITHUB_TOKEN=ghp_xxx
         export GITHUB_REPOSITORY=owner/repo
         salt-bundle repo release \\
-            --formulas-dir ./formulas \\
+            --packages-dir ./packages \\
             --provider github
 
-        # Single formula
+        # Single package
         salt-bundle repo release \\
-            --formulas-dir ./my-formula \\
+            --packages-dir ./my-extension \\
             --single \\
-            --provider local \\
-            --pkg-storage-dir ./repo
+            --provider github
 
-        # Single formula with version override (e.g. from git tag in CI)
+        # Single package with version override (e.g. from git tag in CI)
         salt-bundle repo release \\
-            --formulas-dir ./my-formula \\
+            --packages-dir ./my-extension \\
             --single \\
             --version 1.2.3 \\
-            --provider local \\
-            --pkg-storage-dir ./repo
+            --provider github
 
         # Dry run (preview changes)
         salt-bundle repo release \\
-            --formulas-dir ./formulas \\
+            --packages-dir ./packages \\
             --provider local \\
             --pkg-storage-dir ./repo \\
             --dry-run
@@ -126,14 +124,14 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
             click.echo("Error: --version can only be used with --single", err=True)
             sys.exit(1)
 
-        formulas_path = Path(formulas_dir)
+        packages_path = Path(packages_dir)
 
         if dry_run:
             click.echo("=== DRY RUN MODE ===")
 
-        mode = "single formula" if single else "multiple formulas"
+        mode = "single package" if single else "multiple packages"
         click.echo(f"Mode: {mode}")
-        click.echo(f"Formulas directory: {formulas_path}")
+        click.echo(f"Packages directory: {packages_path}")
         if version_override:
             click.echo(f"Version override: {version_override}")
         click.echo(f"Provider: {provider}")
@@ -177,7 +175,7 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
 
         # Run release process
         released, errors = release_module.release_formulas(
-            formulas_path,
+            packages_path,
             provider_instance,
             skip_packaging=skip_packaging,
             dry_run=dry_run,

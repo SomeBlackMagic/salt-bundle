@@ -1,0 +1,22 @@
+name: example/saltext-hello
+version: 0.1.0
+description: Simple Salt extension that provides a hello.greet execution module
+summary: Hello world Salt extension example
+
+maintainers:
+  - name: Example Team
+    email: team@example.com
+
+keywords:
+  - example
+  - hello
+
+source: https://github.com/example/saltext-hello
+license: Apache-2.0
+
+salt:
+  min_version: "3006"
+  max_version: "3009"
+
+python_requires: []
+dependencies: []

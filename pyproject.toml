@@ -1,6 +1,6 @@
 [project]
 name = "salt-bundle"
-version = "2.0.0"
+version = "2.0.1"
 description = "Salt package manager prototype"
 readme = "docs/README.md"
 requires-python = ">=3.10"
@@ -10,6 +10,7 @@ dependencies = [
     "pyyaml",
     "semver>=3.0.0",
     "requests",
+    "pathspec>=0.11.0",
     "PyGithub>=2.0.0",
 ]
 

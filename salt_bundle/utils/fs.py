@@ -1,54 +1,48 @@
 """Filesystem utilities."""
 
-import fnmatch
 from pathlib import Path
+
+import pathspec
 
 
 DEFAULT_IGNORE_PATTERNS = [
-    '.git',
-    '.git/**',
-    '__pycache__',
-    '__pycache__/**',
+    '.git/',
+    '__pycache__/',
     '*.pyc',
     '*.pyo',
-    'tests',
-    'tests/**',
-    '.pytest_cache',
-    '.pytest_cache/**',
-    '*.egg-info',
-    '*.egg-info/**',
+    'tests/',
+    '.pytest_cache/',
+    '*.egg-info/',
 ]
 
 
-def load_ignore_patterns(base_dir: Path) -> list[str]:
-    """Load ignore patterns from FORMULAIGNORE file if exists.
+def load_ignore_patterns(base_dir: Path, ignore_filename: str = 'FORMULAIGNORE') -> pathspec.PathSpec:
+    """Load ignore patterns from ignore file if it exists.
 
     Args:
-        base_dir: Base directory to look for FORMULAIGNORE
+        base_dir: Base directory to look for ignore file
+        ignore_filename: Name of the ignore file (FORMULAIGNORE or EXTENSIONIGNORE)
 
     Returns:
-        List of ignore patterns (always includes defaults)
+        Compiled pathspec with gitignore semantics
     """
-    patterns = DEFAULT_IGNORE_PATTERNS.copy()
-    ignore_file = base_dir / 'FORMULAIGNORE'
+    lines = list(DEFAULT_IGNORE_PATTERNS)
+    ignore_file = base_dir / ignore_filename
 
     if ignore_file.exists():
         with open(ignore_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    patterns.append(line)
+            lines.extend(f.read().splitlines())
 
-    return patterns
+    return pathspec.PathSpec.from_lines('gitwildmatch', lines)
 
 
-def should_ignore(path: Path, base_dir: Path, patterns: list[str]) -> bool:
-    """Check if path should be ignored based on patterns.
+def should_ignore(path: Path, base_dir: Path, spec: pathspec.PathSpec) -> bool:
+    """Check if path should be ignored.
 
     Args:
         path: Path to check
         base_dir: Base directory for relative path calculation
-        patterns: List of glob patterns
+        spec: Compiled pathspec
 
     Returns:
         True if path should be ignored
@@ -58,45 +52,25 @@ def should_ignore(path: Path, base_dir: Path, patterns: list[str]) -> bool:
     except ValueError:
         return False
 
-    rel_path_str = str(rel_path)
-
-    for pattern in patterns:
-        # Check full relative path
-        if fnmatch.fnmatch(rel_path_str, pattern):
-            return True
-
-        # Check just the filename
-        if fnmatch.fnmatch(path.name, pattern):
-            return True
-
-        # Check each parent directory in the path
-        # This handles cases like .github, .idea directories
-        for part in rel_path.parts:
-            if fnmatch.fnmatch(part, pattern):
-                return True
-            # Also check if pattern matches the directory exactly
-            if part == pattern.rstrip('/'):
-                return True
-
-    return False
+    return spec.match_file(str(rel_path))
 
 
-def collect_files(base_dir: Path, patterns: list[str] | None = None) -> list[Path]:
+def collect_files(base_dir: Path, spec: pathspec.PathSpec | None = None) -> list[Path]:
     """Collect all files in directory respecting ignore patterns.
 
     Args:
         base_dir: Base directory to scan
-        patterns: Ignore patterns (if None, loads from FORMULAIGNORE)
+        spec: Compiled pathspec (if None, loads from FORMULAIGNORE)
 
     Returns:
         List of file paths to include in package
     """
-    if patterns is None:
-        patterns = load_ignore_patterns(base_dir)
+    if spec is None:
+        spec = load_ignore_patterns(base_dir)
 
     files = []
     for path in base_dir.rglob('*'):
-        if path.is_file() and not should_ignore(path, base_dir, patterns):
+        if path.is_file() and not should_ignore(path, base_dir, spec):
             files.append(path)
 
     return files

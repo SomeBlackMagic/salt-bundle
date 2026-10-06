@@ -177,14 +177,7 @@ def pack_extension(
     if not validate_semver(meta.version):
         raise ValueError(f"Invalid semver version: {meta.version}")
 
-    module_directories = [
-        path for path in extension_dir.iterdir()
-        if path.is_dir() and path.name in EXTENSION_DIRECTORY_NAMES
-    ]
-    if not module_directories:
-        raise ValueError("Extension must contain at least one supported Salt module directory")
-
-    patterns = load_ignore_patterns(extension_dir)
+    patterns = load_ignore_patterns(extension_dir, 'EXTENSIONIGNORE')
     files = collect_files(extension_dir, patterns)
     metadata_file = extension_dir / "EXTENSION"
     archive_path = output_path / archive_filename(meta.name, meta.version)

@@ -39,11 +39,8 @@ class PackageInfo:
 
 def _is_valid_package_layout(package_dir: Path, package_type: str) -> bool:
     if package_type == "formula":
-        return any(package_dir.glob("*.sls"))
-    return any(
-        item.is_dir() and item.name in EXTENSION_DIRECTORY_NAMES
-        for item in package_dir.iterdir()
-    )
+        return (package_dir / "FORMULA").exists()
+    return (package_dir / "EXTENSION").exists()
 
 
 def discover_packages(

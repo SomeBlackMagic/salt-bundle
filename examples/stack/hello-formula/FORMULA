@@ -1,0 +1,24 @@
+name: example/hello-formula
+version: 0.1.0
+description: Example formula that uses saltext-hello extension to greet minions
+summary: Hello world formula with extension dependency
+
+maintainers:
+  - name: Example Team
+    email: team@example.com
+
+keywords:
+  - example
+  - hello
+  - greeting
+
+source: https://github.com/example/hello-formula
+license: Apache-2.0
+
+salt:
+  min_version: "3006"
+  max_version: "3009"
+
+dependencies:
+  - name: example/saltext-hello
+    version: ">=0.1.0"
