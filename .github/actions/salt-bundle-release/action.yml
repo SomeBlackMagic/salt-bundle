@@ -43,7 +43,7 @@ inputs:
   version:
     description: >
       Override the package version (only for single-package mode).
-      Useful when the version comes from a git tag, e.g. "${{ github.ref_name }}".
+      Useful when the version comes from a git tag.
     required: false
     default: ""
 
