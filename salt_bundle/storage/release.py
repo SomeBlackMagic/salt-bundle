@@ -46,7 +46,11 @@ def _is_valid_package_layout(package_dir: Path, package_type: str) -> bool:
     )
 
 
-def discover_packages(formulas_dir: Path | str, single_formula: bool = False) -> List[PackageInfo]:
+def discover_packages(
+    formulas_dir: Path | str,
+    single_formula: bool = False,
+    version_override: str | None = None,
+) -> List[PackageInfo]:
     """Discover all formulas in a directory.
 
     Args:
@@ -72,6 +76,12 @@ def discover_packages(formulas_dir: Path | str, single_formula: bool = False) ->
         try:
             # Load metadata
             meta = load_package_meta(formulas_dir)
+
+            if version_override:
+                if not validate_semver(version_override):
+                    print(f"Warning: Invalid semver version override: {version_override}")
+                    return formulas
+                meta = meta.model_copy(update={"version": version_override})
 
             # Validate
             if not validate_metadata_package_name(meta.name):
@@ -155,6 +165,7 @@ def release_packages(
     skip_packaging: bool = False,
     dry_run: bool = False,
     single_formula: bool = False,
+    version_override: str | None = None,
 ) -> Tuple[List[PackageInfo], List[str]]:
     """Release formulas using the specified provider.
 
@@ -199,7 +210,7 @@ def release_packages(
             print(f"Warning: Failed to load index: {e}")
 
     # Discover formulas
-    formulas = discover_packages(formulas_dir, single_formula=single_formula)
+    formulas = discover_packages(formulas_dir, single_formula=single_formula, version_override=version_override)
     if not formulas:
         return [], ["No valid formulas found"]
 
@@ -228,7 +239,7 @@ def release_packages(
             try:
                 # Pack formula to temp directory
                 if not skip_packaging:
-                    archive_path = pack_package(formula.path, temp_dir)
+                    archive_path = pack_package(formula.path, temp_dir, version_override=version_override)
                     print(f"  Packed: {archive_path.name}")
                 else:
                     # Look for existing archive in temp or formula dir

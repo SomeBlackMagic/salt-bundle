@@ -40,6 +40,13 @@ inputs:
     required: false
     default: ""
 
+  version:
+    description: >
+      Override the package version (only for single-package mode).
+      Useful when the version comes from a git tag, e.g. "${{ github.ref_name }}".
+    required: false
+    default: ""
+
   token:
     description: "GitHub token for publishing. Defaults to the automatic GITHUB_TOKEN."
     required: false
@@ -88,6 +95,10 @@ runs:
         # Explicit flag or auto-detect: FORMULA/EXTENSION in root means single package
         if [ "${{ inputs.single }}" = "true" ] || [ -f "$PKG_DIR/FORMULA" ] || [ -f "$PKG_DIR/EXTENSION" ]; then
           args+=( --single )
+        fi
+
+        if [ -n "${{ inputs.version }}" ]; then
+          args+=( --version "${{ inputs.version }}" )
         fi
 
         if [ "${{ inputs.skip-packaging }}" = "true" ]; then

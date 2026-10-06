@@ -1,10 +1,14 @@
 """Package management: packing and unpacking formulas."""
 
+import io
 import logging
 import re
 import tarfile
+import time
 from pathlib import Path
 from typing import Optional
+
+import yaml
 
 from .extensions import ExtensionMeta
 from .metadata import load_formula_meta, load_extension_meta
@@ -59,9 +63,28 @@ def validate_semver(version: str) -> bool:
     return bool(SEMVER_PATTERN.match(version))
 
 
+def _add_metadata_to_archive(
+    tar: tarfile.TarFile,
+    meta: PackageMeta | ExtensionMeta,
+    arcname: str,
+) -> None:
+    """Add serialized metadata as a file entry to a tar archive."""
+    data = yaml.safe_dump(
+        meta.model_dump(exclude_none=True),
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+    ).encode("utf-8")
+    info = tarfile.TarInfo(name=arcname)
+    info.size = len(data)
+    info.mtime = int(time.time())
+    tar.addfile(info, io.BytesIO(data))
+
+
 def pack_formula(
     formula_dir: Path | str = Path.cwd(),
-    output_dir: Optional[Path | str] = None
+    output_dir: Optional[Path | str] = None,
+    version_override: Optional[str] = None,
 ) -> Path:
     """Pack formula into tar.gz archive.
 
@@ -84,6 +107,11 @@ def pack_formula(
 
     # Load and validate metadata
     meta = load_formula_meta(formula_dir)
+
+    if version_override:
+        if not validate_semver(version_override):
+            raise ValueError(f"Invalid semver version override: {version_override}")
+        meta = meta.model_copy(update={"version": version_override})
 
     if not validate_metadata_package_name(meta.name):
         raise ValueError(f"Invalid package name: {meta.name}")
@@ -117,9 +145,13 @@ def pack_formula(
 
     with tarfile.open(archive_path, 'w:gz') as tar:
         for file_path in files:
+            if version_override and file_path == formula_file:
+                continue
             arcname = file_path.relative_to(formula_dir)
             tar.add(file_path, arcname=str(arcname))
-        if formula_file not in files:
+        if version_override:
+            _add_metadata_to_archive(tar, meta, 'FORMULA')
+        elif formula_file not in files:
             tar.add(formula_file, arcname='FORMULA')
 
     return archive_path
@@ -128,11 +160,18 @@ def pack_formula(
 def pack_extension(
     extension_dir: Path | str = Path.cwd(),
     output_dir: Optional[Path | str] = None,
+    version_override: Optional[str] = None,
 ) -> Path:
     """Pack an EXTENSION package into a tar.gz archive."""
     extension_dir = Path(extension_dir)
     output_path = extension_dir if output_dir is None else Path(output_dir)
     meta = load_extension_meta(extension_dir)
+
+    if version_override:
+        if not validate_semver(version_override):
+            raise ValueError(f"Invalid semver version override: {version_override}")
+        meta = meta.model_copy(update={"version": version_override})
+
     if not validate_metadata_package_name(meta.name):
         raise ValueError(f"Invalid package name: {meta.name}")
     if not validate_semver(meta.version):
@@ -154,18 +193,22 @@ def pack_extension(
             if file_path == metadata_file:
                 continue
             tar.add(file_path, arcname=str(file_path.relative_to(extension_dir)))
-        tar.add(metadata_file, arcname="EXTENSION")
+        if version_override:
+            _add_metadata_to_archive(tar, meta, "EXTENSION")
+        else:
+            tar.add(metadata_file, arcname="EXTENSION")
     return archive_path
 
 
 def pack_package(
     package_dir: Path | str = Path.cwd(),
     output_dir: Optional[Path | str] = None,
+    version_override: Optional[str] = None,
 ) -> Path:
     """Pack a formula or extension based on its metadata file."""
     if detect_package_type(package_dir) == "formula":
-        return pack_formula(package_dir, output_dir)
-    return pack_extension(package_dir, output_dir)
+        return pack_formula(package_dir, output_dir, version_override=version_override)
+    return pack_extension(package_dir, output_dir, version_override=version_override)
 
 
 def unpack_package(archive_path: Path | str, target_dir: Path | str) -> Path:

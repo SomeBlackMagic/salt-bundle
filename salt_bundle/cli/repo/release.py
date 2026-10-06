@@ -19,12 +19,14 @@ from salt_bundle.storage import release as release_module
               help='[local provider] Directory where packages and index.yaml will be stored (required for local provider)')
 @click.option('--index-branch', type=str, default='gh-pages',
               help='[github provider] Git branch for index.yaml (default: gh-pages)')
+@click.option('--version', 'version_override', type=str, default=None,
+              help='Override package version (only with --single). Useful in CI when version comes from git tag.')
 @click.option('--skip-packaging', is_flag=True,
               help='Skip packaging step (use existing .tgz files)')
 @click.option('--dry-run', is_flag=True,
               help='Show what would be done without doing it')
 @click.pass_context
-def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, skip_packaging, dry_run):
+def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, version_override, skip_packaging, dry_run):
     """Release formulas to repository.
 
     Automates the complete release workflow:
@@ -96,6 +98,14 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
             --provider local \\
             --pkg-storage-dir ./repo
 
+        # Single formula with version override (e.g. from git tag in CI)
+        salt-bundle repo release \\
+            --formulas-dir ./my-formula \\
+            --single \\
+            --version 1.2.3 \\
+            --provider local \\
+            --pkg-storage-dir ./repo
+
         # Dry run (preview changes)
         salt-bundle repo release \\
             --formulas-dir ./formulas \\
@@ -112,6 +122,10 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
     - 'salt-bundle repo index' to manually update index
     """
     try:
+        if version_override and not single:
+            click.echo("Error: --version can only be used with --single", err=True)
+            sys.exit(1)
+
         formulas_path = Path(formulas_dir)
 
         if dry_run:
@@ -120,6 +134,8 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
         mode = "single formula" if single else "multiple formulas"
         click.echo(f"Mode: {mode}")
         click.echo(f"Formulas directory: {formulas_path}")
+        if version_override:
+            click.echo(f"Version override: {version_override}")
         click.echo(f"Provider: {provider}")
 
         # Initialize provider
@@ -166,6 +182,7 @@ def release(ctx, formulas_dir, single, provider, pkg_storage_dir, index_branch, 
             skip_packaging=skip_packaging,
             dry_run=dry_run,
             single_formula=single,
+            version_override=version_override,
         )
 
         # Summary
