@@ -18,6 +18,7 @@ try:
     from .repo import add as repo_add_cmd
     from .repo import index as repo_index_cmd
     from .repo import release as repo_release_cmd
+    from .repo import index_html as repo_index_html_cmd
     from . import runtime as runtime_cmd
 except ImportError:
     # Direct execution - add parent directory to path
@@ -33,6 +34,7 @@ except ImportError:
     from salt_bundle.cli.repo import add as repo_add_cmd
     from salt_bundle.cli.repo import index as repo_index_cmd
     from salt_bundle.cli.repo import release as repo_release_cmd
+    from salt_bundle.cli.repo import index_html as repo_index_html_cmd
     from salt_bundle.cli import runtime as runtime_cmd
 
 
@@ -89,6 +91,7 @@ project.add_command(project_vendor_cmd.vendor)
 repo.add_command(repo_add_cmd.add)
 repo.add_command(repo_index_cmd.index)
 repo.add_command(repo_release_cmd.release)
+repo.add_command(repo_index_html_cmd.index_html)
 
 
 def main():

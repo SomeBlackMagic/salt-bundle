@@ -155,20 +155,25 @@ class GitHubReleaseProvider(ReleaseProvider):
         for pkg_name, versions in index.packages.items():
             print(f"  - {pkg_name}: {len(versions)} version(s)")
 
-        # Create temporary file for index
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            temp_index = Path(f.name)
-            dump_yaml(index.model_dump(), temp_index)
+        # Create temporary files for index
+        temp_dir = Path(tempfile.mkdtemp(prefix='salt-index-'))
+        temp_index = temp_dir / 'index.yaml'
+        temp_html = temp_dir / 'index.html'
+
+        dump_yaml(index.model_dump(), temp_index)
+
+        from ..index_html import render_index_html
+        temp_html.write_text(render_index_html(index), encoding='utf-8')
 
         try:
-            self._commit_index_to_branch(temp_index, git_root)
+            self._commit_index_to_branch(temp_dir, git_root)
         finally:
-            # Clean up temp file
-            if temp_index.exists():
-                temp_index.unlink()
+            import shutil
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir)
 
-    def _commit_index_to_branch(self, index_file: Path, repo_dir: Path) -> None:
-        """Commit index.yaml to separate orphan branch."""
+    def _commit_index_to_branch(self, source_dir: Path, repo_dir: Path) -> None:
+        """Commit index files (index.yaml, index.html) to separate orphan branch."""
         # Save current branch
         result = subprocess.run(
             ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
@@ -234,14 +239,15 @@ class GitHubReleaseProvider(ReleaseProvider):
                     check=False
                 )
 
-            # Copy index.yaml to repo root
+            # Copy index files to repo root
             import shutil
-            target_index = repo_dir / 'index.yaml'
-            shutil.copy2(index_file, target_index)
+            for src in source_dir.iterdir():
+                if src.is_file():
+                    shutil.copy2(src, repo_dir / src.name)
 
-            # Add index.yaml
+            # Add index files
             subprocess.run(
-                ['git', 'add', 'index.yaml'],
+                ['git', 'add', 'index.yaml', 'index.html'],
                 cwd=repo_dir,
                 capture_output=True,
                 text=True,

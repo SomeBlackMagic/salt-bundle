@@ -40,7 +40,7 @@ class PackageName:
     @property
     def archive_prefix(self) -> str:
         """Return the filename-safe ``vendor--package`` prefix."""
-        return f"{self.vendor}--{self.package}"
+        return f"{self.vendor}-{self.package}"
 
     def __str__(self) -> str:
         return self.full_name
