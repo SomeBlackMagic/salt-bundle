@@ -20,6 +20,11 @@ inputs:
     required: false
     default: "gh-pages"
 
+  index-dir:
+    description: "Relative directory in the index branch where index.yaml and index.html will be committed."
+    required: false
+    default: ""
+
   skip-packaging:
     description: "If true, skips archive creation and uses existing .tar.gz files."
     required: false
@@ -90,6 +95,7 @@ runs:
           --provider github
           --packages-dir "$PKG_DIR"
           --index-branch "${{ inputs.index-branch }}"
+          --index-dir "${{ inputs.index-dir }}"
         )
 
         # Explicit flag or auto-detect: FORMULA/EXTENSION in root means single package

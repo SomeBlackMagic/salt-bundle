@@ -19,6 +19,8 @@ from salt_bundle.storage import release as release_module
               help='[local provider] Directory where packages and index.yaml will be stored (required for local provider)')
 @click.option('--index-branch', type=str, default='gh-pages',
               help='[github provider] Git branch for index.yaml (default: gh-pages)')
+@click.option('--index-dir', type=str, default='',
+              help='[github provider] Relative directory for index files in index branch (default: branch root)')
 @click.option('--version', 'version_override', type=str, default=None,
               help='Override package version (only with --single). Useful in CI when version comes from git tag.')
 @click.option('--skip-packaging', is_flag=True,
@@ -26,7 +28,7 @@ from salt_bundle.storage import release as release_module
 @click.option('--dry-run', is_flag=True,
               help='Show what would be done without doing it')
 @click.pass_context
-def release(ctx, packages_dir, single, provider, pkg_storage_dir, index_branch, version_override, skip_packaging, dry_run):
+def release(ctx, packages_dir, single, provider, pkg_storage_dir, index_branch, index_dir, version_override, skip_packaging, dry_run):
     """Release packages (formulas or extensions) to repository.
 
     Automates the complete release workflow:
@@ -52,14 +54,15 @@ def release(ctx, packages_dir, single, provider, pkg_storage_dir, index_branch, 
     GITHUB - GitHub Releases
         Creates GitHub releases and stores index.yaml in separate branch:
         - Packages uploaded as release assets
-        - index.yaml stored in git branch (default: gh-pages)
-        - Branch contains ONLY index.yaml
+        - index.yaml and index.html stored in git branch (default: gh-pages)
+        - Optional --index-dir places both files in a branch subdirectory
 
         Required environment variables:
         - GITHUB_TOKEN: Personal access token with repo permissions
         - GITHUB_REPOSITORY: Repository in format 'owner/repo'
 
         Optional: --index-branch (default: gh-pages)
+        Optional: --index-dir (default: branch root)
 
     PACKAGE DISCOVERY:
 
@@ -161,12 +164,14 @@ def release(ctx, packages_dir, single, provider, pkg_storage_dir, index_branch, 
 
             click.echo(f"GitHub repository: {repo}")
             click.echo(f"Index branch: {index_branch}")
+            click.echo(f"Index directory: {index_dir or '.'}")
             click.echo()
 
             provider_instance = GitHubReleaseProvider(
                 token=token,
                 repository=repo,
-                index_branch=index_branch
+                index_branch=index_branch,
+                index_dir=index_dir,
             )
 
         else:

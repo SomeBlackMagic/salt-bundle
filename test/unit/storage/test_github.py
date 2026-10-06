@@ -61,3 +61,25 @@ class TestGitHubStorage(unittest.TestCase):
         self.assertEqual(provider.upload_package("package", "1.0.0", Path("archive.tgz")), "asset")
         client.release_exists.return_value = True
         self.assertTrue(provider.package_exists("package", "1.0.0"))
+
+    @patch("salt_bundle.storage.providers.github_provider.GitHubReleaser")
+    def test_github_provider_uses_configured_index_directory(self, releaser_class: MagicMock) -> None:
+        provider = GitHubReleaseProvider(
+            token="token", repository="owner/repository", index_dir="repositories/stable"
+        )
+        self.assertEqual(provider._index_yaml_path, "repositories/stable/index.yaml")
+        self.assertEqual(provider._index_html_path, "repositories/stable/index.html")
+
+        releaser_class.return_value.repo.get_contents.return_value.decoded_content = (
+            "apiVersion: v1\ngenerated: '2024-01-01T00:00:00'\npackages: {}\n"
+        )
+        with patch.object(provider, "_find_git_root", return_value=None):
+            self.assertIsNotNone(provider.load_index())
+        releaser_class.return_value.repo.get_contents.assert_called_once_with(
+            "repositories/stable/index.yaml", ref="gh-pages"
+        )
+
+    @patch("salt_bundle.storage.providers.github_provider.GitHubReleaser")
+    def test_github_provider_rejects_unsafe_index_directory(self, releaser_class: MagicMock) -> None:
+        with self.assertRaisesRegex(ValueError, "relative path"):
+            GitHubReleaseProvider(token="token", repository="owner/repository", index_dir="../outside")

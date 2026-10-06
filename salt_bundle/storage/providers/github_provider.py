@@ -16,15 +16,16 @@ class GitHubReleaseProvider(ReleaseProvider):
     """Provider for storing packages as GitHub releases with index in gh-pages branch.
 
     - Packages are uploaded as release assets
-    - index.yaml is stored in a separate branch (default: gh-pages)
-    - The index branch contains ONLY index.yaml file
+    - index.yaml and index.html are stored in a separate branch (default: gh-pages)
+    - Index files may be placed in a configured directory in that branch
     """
 
     def __init__(
         self,
         token: Optional[str] = None,
         repository: Optional[str] = None,
-        index_branch: str = 'gh-pages'
+        index_branch: str = 'gh-pages',
+        index_dir: str = '',
     ):
         """Initialize GitHub provider.
 
@@ -32,10 +33,15 @@ class GitHubReleaseProvider(ReleaseProvider):
             token: GitHub token (defaults to GITHUB_TOKEN env var)
             repository: Repository in format 'owner/repo' (defaults to GITHUB_REPOSITORY env var)
             index_branch: Git branch name for index.yaml (default: gh-pages)
+            index_dir: Relative directory in index_branch for index files (default: branch root)
         """
         self.token = token or os.getenv('GITHUB_TOKEN')
         self.repository_name = repository or os.getenv('GITHUB_REPOSITORY')
         self.index_branch = index_branch
+        index_path = Path(index_dir)
+        if index_path.is_absolute() or '..' in index_path.parts:
+            raise ValueError("index_dir must be a relative path without '..'")
+        self.index_dir = index_path.as_posix() if index_dir and index_dir != '.' else ''
 
         if not self.token:
             raise ValueError(
@@ -49,6 +55,16 @@ class GitHubReleaseProvider(ReleaseProvider):
 
         self.gh_client = GitHubReleaser(token=self.token, repository=self.repository_name)
         self._git_root: Optional[Path] = None
+
+    @property
+    def _index_yaml_path(self) -> str:
+        """Repository-relative path of index.yaml on the index branch."""
+        return f'{self.index_dir}/index.yaml' if self.index_dir else 'index.yaml'
+
+    @property
+    def _index_html_path(self) -> str:
+        """Repository-relative path of index.html on the index branch."""
+        return f'{self.index_dir}/index.html' if self.index_dir else 'index.html'
 
     def initialize(self) -> None:
         """Verify GitHub credentials and repository access."""
@@ -102,7 +118,10 @@ class GitHubReleaseProvider(ReleaseProvider):
                 )
 
             # Try to load from git branch (use origin/branch if local doesn't exist)
-            for ref in [f'{self.index_branch}:index.yaml', f'origin/{self.index_branch}:index.yaml']:
+            for ref in [
+                f'{self.index_branch}:{self._index_yaml_path}',
+                f'origin/{self.index_branch}:{self._index_yaml_path}',
+            ]:
                 result = subprocess.run(
                     ['git', 'show', ref],
                     cwd=git_root,
@@ -129,7 +148,7 @@ class GitHubReleaseProvider(ReleaseProvider):
     def _load_index_from_github_api(self) -> Optional[Index]:
         """Load index.yaml using GitHub API."""
         try:
-            contents = self.gh_client.repo.get_contents('index.yaml', ref=self.index_branch)
+            contents = self.gh_client.repo.get_contents(self._index_yaml_path, ref=self.index_branch)
             if isinstance(contents, list):
                 return None
 
@@ -142,8 +161,7 @@ class GitHubReleaseProvider(ReleaseProvider):
     def save_index(self, index: Index) -> None:
         """Save index.yaml to GitHub branch.
 
-        Commits and pushes index.yaml to the configured branch.
-        The branch will contain ONLY index.yaml file.
+        Commits and pushes index.yaml and index.html to the configured branch.
         """
         git_root = self._find_git_root()
         if not git_root:
@@ -239,15 +257,17 @@ class GitHubReleaseProvider(ReleaseProvider):
                     check=False
                 )
 
-            # Copy index files to repo root
+            # Copy index files to their configured directory on the index branch.
             import shutil
+            target_dir = repo_dir / self.index_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
             for src in source_dir.iterdir():
                 if src.is_file():
-                    shutil.copy2(src, repo_dir / src.name)
+                    shutil.copy2(src, target_dir / src.name)
 
             # Add index files
             subprocess.run(
-                ['git', 'add', 'index.yaml', 'index.html'],
+                ['git', 'add', self._index_yaml_path, self._index_html_path],
                 cwd=repo_dir,
                 capture_output=True,
                 text=True,
