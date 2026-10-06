@@ -76,7 +76,7 @@ class TestRepoReleaseCommand(unittest.TestCase):
 
         storage_dir = self.root / "repo"
         result = self.runner.invoke(release, [
-            "--formulas-dir", str(self.root / "formulas"),
+            "--packages-dir", str(self.root / "formulas"),
             "--provider", "local",
             "--pkg-storage-dir", str(storage_dir),
         ], obj=self.context)
@@ -92,7 +92,7 @@ class TestRepoReleaseCommand(unittest.TestCase):
 
         storage_dir = self.root / "repo"
         result = self.runner.invoke(release, [
-            "--formulas-dir", str(self.root / "formulas"),
+            "--packages-dir", str(self.root / "formulas"),
             "--provider", "local",
             "--pkg-storage-dir", str(storage_dir),
             "--dry-run",
@@ -106,7 +106,7 @@ class TestRepoReleaseCommand(unittest.TestCase):
         formulas_dir = self.root / "formulas"
         formulas_dir.mkdir()
         result = self.runner.invoke(release, [
-            "--formulas-dir", str(formulas_dir),
+            "--packages-dir", str(formulas_dir),
             "--provider", "local",
         ], obj=self.context)
         self.assertNotEqual(result.exit_code, 0)
@@ -119,7 +119,7 @@ class TestRepoReleaseCommand(unittest.TestCase):
 
         storage_dir = self.root / "repo"
         result = self.runner.invoke(release, [
-            "--formulas-dir", str(formula_dir),
+            "--packages-dir", str(formula_dir),
             "--single",
             "--provider", "local",
             "--pkg-storage-dir", str(storage_dir),
@@ -133,7 +133,7 @@ class TestRepoReleaseCommand(unittest.TestCase):
         formulas_dir.mkdir()
         with patch.dict("os.environ", {}, clear=True):
             result = self.runner.invoke(release, [
-                "--formulas-dir", str(formulas_dir),
+                "--packages-dir", str(formulas_dir),
                 "--provider", "github",
             ], obj=self.context)
         self.assertNotEqual(result.exit_code, 0)
@@ -144,7 +144,7 @@ class TestRepoReleaseCommand(unittest.TestCase):
 
         storage_dir = self.root / "repo"
         result = self.runner.invoke(release, [
-            "--formulas-dir", str(formulas_dir),
+            "--packages-dir", str(formulas_dir),
             "--provider", "local",
             "--pkg-storage-dir", str(storage_dir),
         ], obj=self.context)

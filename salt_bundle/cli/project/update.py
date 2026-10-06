@@ -41,7 +41,7 @@ def update(ctx):
 
         vendor_dir = vendor.get_vendor_dir(project_dir, saltfile.vendor_dir)
         vendor.ensure_vendor_dir(vendor_dir)
-        user_repositories = load_user_config().repositories
+        user_repositories = list(saltfile.repositories) + list(load_user_config().repositories)
         path_source_repositories = {
             repository.url
             for repository in user_repositories

@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from ..config.models import RepositoryConfig
 from ..packaging.naming import validate_package_name
 
 
@@ -35,6 +36,7 @@ class SaltfileDependency(BaseModel):
 class SaltfileConfig(BaseModel):
     """Project dependencies declared in Saltfile."""
 
+    repositories: list[RepositoryConfig] = Field(default_factory=list)
     dependencies: list[SaltfileDependency] = Field(default_factory=list)
     vendor_dir: str = "vendor"
     runtime: RuntimeConfig = Field(default_factory=RuntimeConfig)

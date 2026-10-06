@@ -62,13 +62,13 @@ class TestArchivesExtended(unittest.TestCase):
             with self.assertRaises(ValueError):
                 pack_extension(ext_dir)
 
-    def test_pack_extension_no_module_dirs_raises(self) -> None:
+    def test_pack_extension_without_module_dirs_succeeds(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ext_dir = Path(tmp)
             (ext_dir / "EXTENSION").write_text("name: example\nversion: 1.0.0\n", encoding="utf-8")
 
-            with self.assertRaises(ValueError):
-                pack_extension(ext_dir)
+            archive = pack_extension(ext_dir)
+            self.assertTrue(archive.exists())
 
     def test_pack_package_dispatches_to_extension(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

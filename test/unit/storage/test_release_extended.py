@@ -93,12 +93,14 @@ class TestReleaseExtended(unittest.TestCase):
     def test_is_valid_package_layout_formula(self) -> None:
         pkg_dir = self.root / "formula"
         pkg_dir.mkdir()
+        (pkg_dir / "FORMULA").write_text("name: example\nversion: 1.0.0\n", encoding="utf-8")
         (pkg_dir / "init.sls").write_text("test: true\n", encoding="utf-8")
         self.assertTrue(_is_valid_package_layout(pkg_dir, "formula"))
 
     def test_is_valid_package_layout_extension(self) -> None:
         pkg_dir = self.root / "ext"
         pkg_dir.mkdir()
+        (pkg_dir / "EXTENSION").write_text("name: example\nversion: 1.0.0\n", encoding="utf-8")
         mod_dir = pkg_dir / "_modules"
         mod_dir.mkdir()
         self.assertTrue(_is_valid_package_layout(pkg_dir, "extension"))

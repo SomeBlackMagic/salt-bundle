@@ -273,6 +273,212 @@ dependencies:
         self.assertEqual(result.exit_code, 1)
         self.assertIn(f"Error: source path not found: {missing_dir}", result.output)
 
+    @patch('salt_bundle.cli.project.update.fetch_index')
+    @patch('salt_bundle.cli.project.update.download_package')
+    @patch('salt_bundle.storage.vendor.install_package_to_vendor')
+    @patch('subprocess.run')
+    def test_update_uses_saltfile_repositories_for_resolution(
+        self, mock_run, mock_install_vendor, mock_download, mock_fetch_index
+    ):
+        """Repositories defined in Saltfile should be used for dependency resolution."""
+        (self.project_dir / "Saltfile").write_text(
+            """repositories:
+  - name: company
+    url: https://company.example.test/salt/
+dependencies:
+  - name: acme/nginx
+    version: "^1.0.0"
+""",
+            encoding="utf-8",
+        )
+
+        nginx_entry = IndexEntry(
+            version="1.2.0",
+            url="nginx-1.2.0.tgz",
+            digest="sha256:nginx_hash",
+        )
+        mock_fetch_index.return_value = Index(
+            generated="2023-01-01T00:00:00",
+            packages={"acme/nginx": [nginx_entry]},
+        )
+        mock_download.return_value = Path("/tmp/fake.tgz")
+        mock_run.return_value = MagicMock(returncode=0)
+
+        result = self.runner.invoke(update, obj={"PROJECT_DIR": self.project_dir, "DEBUG": True})
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("✓ acme/nginx 1.2.0 from https://company.example.test/salt/", result.output)
+        mock_fetch_index.assert_called_with("https://company.example.test/salt/")
+
+    @patch('salt_bundle.cli.project.update.fetch_index')
+    @patch('salt_bundle.cli.project.update.download_package')
+    @patch('salt_bundle.storage.vendor.install_package_to_vendor')
+    @patch('subprocess.run')
+    def test_update_saltfile_repositories_take_priority_over_global(
+        self, mock_run, mock_install_vendor, mock_download, mock_fetch_index
+    ):
+        """Saltfile repositories should be checked before global user repositories."""
+        (self.project_dir / "Saltfile").write_text(
+            """repositories:
+  - name: local-repo
+    url: https://local.example.test/salt/
+dependencies:
+  - name: acme/nginx
+    version: "1.0.0"
+""",
+            encoding="utf-8",
+        )
+
+        local_index = Index(
+            generated="2023-01-01T00:00:00",
+            packages={
+                "acme/nginx": [
+                    IndexEntry(
+                        version="1.0.0",
+                        url="nginx-1.0.0.tgz",
+                        digest="sha256:local_hash",
+                    )
+                ],
+            },
+        )
+        global_index = Index(
+            generated="2023-01-01T00:00:00",
+            packages={
+                "acme/nginx": [
+                    IndexEntry(
+                        version="1.0.0",
+                        url="nginx-1.0.0.tgz",
+                        digest="sha256:global_hash",
+                    )
+                ],
+            },
+        )
+
+        def fake_fetch_index(source):
+            if source == "https://local.example.test/salt/":
+                return local_index
+            return global_index
+
+        mock_fetch_index.side_effect = fake_fetch_index
+        mock_download.return_value = Path("/tmp/fake.tgz")
+        mock_run.return_value = MagicMock(returncode=0)
+
+        with patch(
+            "salt_bundle.cli.project.update.load_user_config",
+            return_value=SimpleNamespace(
+                repositories=[
+                    SimpleNamespace(url="https://global.example.test/salt/", type="remote")
+                ]
+            ),
+        ):
+            result = self.runner.invoke(update, obj={"PROJECT_DIR": self.project_dir, "DEBUG": True})
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        # Package resolved from local repo, not global
+        self.assertIn("✓ acme/nginx 1.0.0 from https://local.example.test/salt/", result.output)
+        # Global repo should not have been queried
+        mock_fetch_index.assert_called_once_with("https://local.example.test/salt/")
+
+    @patch('salt_bundle.cli.project.update.fetch_index')
+    @patch('salt_bundle.cli.project.update.download_package')
+    @patch('salt_bundle.storage.vendor.install_package_to_vendor')
+    @patch('subprocess.run')
+    def test_update_falls_back_to_global_repos_when_saltfile_repos_miss(
+        self, mock_run, mock_install_vendor, mock_download, mock_fetch_index
+    ):
+        """If Saltfile repos don't have the package, global repos should be checked."""
+        (self.project_dir / "Saltfile").write_text(
+            """repositories:
+  - name: local-repo
+    url: https://local.example.test/salt/
+dependencies:
+  - name: acme/nginx
+    version: "1.0.0"
+""",
+            encoding="utf-8",
+        )
+
+        local_index = Index(
+            generated="2023-01-01T00:00:00",
+            packages={},
+        )
+        global_index = Index(
+            generated="2023-01-01T00:00:00",
+            packages={
+                "acme/nginx": [
+                    IndexEntry(
+                        version="1.0.0",
+                        url="nginx-1.0.0.tgz",
+                        digest="sha256:global_hash",
+                    )
+                ],
+            },
+        )
+
+        def fake_fetch_index(source):
+            if source == "https://local.example.test/salt/":
+                return local_index
+            return global_index
+
+        mock_fetch_index.side_effect = fake_fetch_index
+        mock_download.return_value = Path("/tmp/fake.tgz")
+        mock_run.return_value = MagicMock(returncode=0)
+
+        with patch(
+            "salt_bundle.cli.project.update.load_user_config",
+            return_value=SimpleNamespace(
+                repositories=[
+                    SimpleNamespace(url="https://global.example.test/salt/", type="remote")
+                ]
+            ),
+        ):
+            result = self.runner.invoke(update, obj={"PROJECT_DIR": self.project_dir, "DEBUG": True})
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("✓ acme/nginx 1.0.0 from https://global.example.test/salt/", result.output)
+
+    @patch('salt_bundle.cli.project.update.fetch_index')
+    @patch('salt_bundle.cli.project.update.download_package')
+    @patch('salt_bundle.storage.vendor.install_package_to_vendor')
+    @patch('subprocess.run')
+    def test_update_explicit_source_overrides_all_repositories(
+        self, mock_run, mock_install_vendor, mock_download, mock_fetch_index
+    ):
+        """Explicit dependency source should override both Saltfile and global repos."""
+        (self.project_dir / "Saltfile").write_text(
+            """repositories:
+  - name: local-repo
+    url: https://local.example.test/salt/
+dependencies:
+  - name: acme/nginx
+    version: "1.0.0"
+    source: https://explicit.example.test/salt/
+""",
+            encoding="utf-8",
+        )
+
+        explicit_index = Index(
+            generated="2023-01-01T00:00:00",
+            packages={
+                "acme/nginx": [
+                    IndexEntry(
+                        version="1.0.0",
+                        url="nginx-1.0.0.tgz",
+                        digest="sha256:explicit_hash",
+                    )
+                ],
+            },
+        )
+        mock_fetch_index.return_value = explicit_index
+        mock_download.return_value = Path("/tmp/fake.tgz")
+        mock_run.return_value = MagicMock(returncode=0)
+
+        result = self.runner.invoke(update, obj={"PROJECT_DIR": self.project_dir, "DEBUG": True})
+
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertIn("✓ acme/nginx 1.0.0 from https://explicit.example.test/salt/", result.output)
+        mock_fetch_index.assert_called_once_with("https://explicit.example.test/salt/")
+
     def test_update_resolves_dependency_from_global_path_source_repository(self):
         repository_dir = Path(self.test_dir) / "formulas"
         source_dir = repository_dir / "nginx"
