@@ -49,7 +49,7 @@ jobs:
           python3 -m pip install --upgrade pip build
           python3 -m build --wheel
 
-      - name: Vendor ONLY non-salt deps
+      - name: Vendor wheel dependencies
         run: |
           for python_version in ${{ matrix.python_versions }}; do
             python_abi="${python_version/./}"
@@ -59,12 +59,11 @@ jobs:
               --python-version "$python_abi" \
               --abi "cp${python_abi}" \
               --only-binary=:all: \
-              "pydantic>=2" \
-              "pydantic-core" \
-              "typing-extensions" \
-              "annotated-types" \
-              "semver>=3" \
-              "click>=8"
+              dist/*.whl
+            # The application wheel is extracted to lib; keep only its dependencies here.
+            rm -rf "vendor/python${python_version}/salt_bundle" \
+              "vendor/python${python_version}"/salt_bundle-*.dist-info \
+              "vendor/python${python_version}/bin"
           done
 
       - name: Extract package to lib/
