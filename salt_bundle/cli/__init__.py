@@ -70,6 +70,24 @@ def repo():
     pass
 
 
+@cli.command()
+@click.argument('shell', type=click.Choice(['bash', 'zsh', 'fish']))
+def completion(shell):
+    """Generate shell completion script.
+
+    \b
+    Usage:
+      salt-bundle completion bash > /etc/bash_completion.d/salt-bundle
+      salt-bundle completion zsh  > /usr/local/share/zsh/site-functions/_salt-bundle
+      salt-bundle completion fish > ~/.config/fish/completions/salt-bundle.fish
+    """
+    from click.shell_completion import get_completion_class
+
+    comp_cls = get_completion_class(shell)
+    comp = comp_cls(cli, {}, 'salt-bundle', '_SALT_BUNDLE_COMPLETE')
+    click.echo(comp.source())
+
+
 cli.add_command(runtime_cmd.runtime)
 cli.add_command(runtime_cmd.exec)
 cli.add_command(runtime_cmd.ssh)
