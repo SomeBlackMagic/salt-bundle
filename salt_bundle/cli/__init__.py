@@ -114,7 +114,7 @@ repo.add_command(repo_index_html_cmd.index_html)
 
 def main():
     """Entry point for CLI."""
-    cli(obj={})
+    cli(prog_name='salt-bundle', obj={})
 
 
 if __name__ == '__main__':
