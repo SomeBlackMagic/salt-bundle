@@ -33,7 +33,7 @@ verifier:
 platforms:
   - name: debian-12
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-debian-12:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-debian-12:3006.30
       run_command: /lib/systemd/systemd
       env:
         - container=docker
@@ -43,7 +43,7 @@ platforms:
 
   - name: ubuntu-2204
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2204:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2204:3006.30
       run_command: /lib/systemd/systemd
       env:
         - container=docker
@@ -53,7 +53,7 @@ platforms:
 
   - name: ubuntu-2404
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2404:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2404:3006.30
       run_command: /lib/systemd/systemd
       env:
         - container=docker
@@ -63,7 +63,7 @@ platforms:
 
   - name: rockylinux-9
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-rockylinux-9:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-rockylinux-9:3006.30
       run_command: /usr/lib/systemd/systemd
       username: root
       env:
@@ -84,7 +84,7 @@ platforms:
 
   - name: amazonlinux-2023
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-amazonlinux-2023:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-amazonlinux-2023:3006.30
       run_command: /usr/lib/systemd/systemd
       username: root
       env:
@@ -105,7 +105,7 @@ platforms:
 
   - name: centos-stream-9
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-centos-stream-9:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-centos-stream-9:3006.30
       run_command: /usr/lib/systemd/systemd
       username: root
       env:
@@ -126,7 +126,7 @@ platforms:
 
   - name: almalinux-9
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-almalinux-9:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-almalinux-9:3006.30
       run_command: /usr/lib/systemd/systemd
       username: root
       env:
@@ -147,7 +147,7 @@ platforms:
 
   - name: opensuse-leap-15
     driver:
-      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-opensuse-leap-15:3006.24
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-opensuse-leap-15:3006.30
       run_command: /usr/lib/systemd/systemd
       env:
         - container=docker
@@ -169,3 +169,18 @@ suites:
     verifier:
       name: inspec
       sudo: true
+  - name: salt-ssh
+    includes:
+      - debian-12
+    provisioner:
+      script: test/integration/salt_ssh/provision.sh
+      uploads:
+        <%= File.join(Dir.pwd, "salt_bundle") %>: /tmp
+        <%= File.join(Dir.pwd, "examples") %>: /tmp
+        <%= File.join(Dir.pwd, "pyproject.toml") %>: /tmp/pyproject.toml
+        <%= File.join(Dir.pwd, "test/integration/salt_ssh/verify.sh") %>: /tmp/verify-salt-ssh.sh
+    verifier:
+      name: inspec
+      sudo: true
+      inspec_tests:
+        - test/integration/salt_ssh

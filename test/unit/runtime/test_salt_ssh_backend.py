@@ -222,6 +222,10 @@ class TestSaltSSHRuntimeBackend(unittest.TestCase):
             "nginx:\n  pkg.installed\n",
         )
         self.assertEqual(
+            (payload_dir / "nginx" / "init.sls").read_text(),
+            "nginx:\n  pkg.installed\n",
+        )
+        self.assertEqual(
             (payload_dir / "acme/nginx" / "config.sls").read_text(),
             "nginx_conf:\n  file.managed\n",
         )

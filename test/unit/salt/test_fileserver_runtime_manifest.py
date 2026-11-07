@@ -3,10 +3,12 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from salt_bundle.activation.manifest import ManifestPackageEntry, RuntimeManifest
 from salt_bundle.activation.models import PackageName
 from salt_bundle.salt import bundlefs
+from salt_bundle.package_layout import resolve_formula_sls_name
 
 
 class TestManifestAwareBundlefs(unittest.TestCase):
@@ -88,7 +90,34 @@ class TestManifestAwareBundlefs(unittest.TestCase):
         found = bundlefs.find_file("acme/nginx/init.sls")
 
         self.assertEqual(found["path"], str(self.active_formula / "states" / "init.sls"))
+        self.assertEqual(
+            bundlefs.find_file("nginx/init.sls")["path"], found["path"]
+        )
         self.assertEqual(bundlefs.find_file("contoso/apache/init.sls"), {"path": "", "rel": ""})
+
+    def test_formula_suffix_is_removed_from_public_sls_name(self) -> None:
+        (self.active_formula / "FORMULA").write_text(
+            "name: acme/containerd-formula\nversion: 1.0.0\ntop_level_dir: states\n"
+        )
+        self.assertEqual(resolve_formula_sls_name(self.active_formula), "containerd")
+        bundlefs.__opts__ = self._opts()
+        self.assertIn("containerd/init.sls", bundlefs.file_list({}))
+
+    def test_colliding_short_names_keep_full_package_names(self) -> None:
+        other = self.project_dir / "vendor" / "other" / "nginx"
+        other.mkdir(parents=True)
+        (other / "FORMULA").write_text("name: other/nginx\nversion: 1.0.0\n")
+        (other / "init.sls").write_text("other: {}\n")
+        bundlefs.__opts__ = {}
+        with patch.object(
+            bundlefs, "_get_active_roots", return_value=[
+                (self.active_formula, "formula"), (other, "formula")
+            ]
+        ):
+            files = bundlefs.file_list({})
+        self.assertIn("acme/nginx/init.sls", files)
+        self.assertIn("other/nginx/init.sls", files)
+        self.assertNotIn("nginx/init.sls", files)
 
     def test_find_file_resolves_module_sync_paths_for_formula_and_extension(self) -> None:
         bundlefs.__opts__ = self._opts()
@@ -107,7 +136,7 @@ class TestManifestAwareBundlefs(unittest.TestCase):
 
         self.assertEqual(found["path"], str(self.active_formula / "states" / "config.sls"))
         self.assertNotIn("states/config.sls", bundlefs.file_list({}))
-        self.assertIn("acme/nginx/config.sls", bundlefs.file_list({}))
+        self.assertIn("nginx/config.sls", bundlefs.file_list({}))
         self.assertEqual(
             bundlefs.find_file("_modules/nginx.py")["path"],
             str(self.active_formula / "_modules" / "nginx.py"),
@@ -138,11 +167,11 @@ class TestManifestAwareBundlefs(unittest.TestCase):
             [
                 "_modules/nginx.py",
                 "_modules/systemd.py",
-                "acme/nginx/config.sls",
-                "acme/nginx/init.sls",
+                "nginx/config.sls",
+                "nginx/init.sls",
             ],
         )
-        self.assertEqual(bundlefs.dir_list({}), ["_modules", "acme/nginx"])
+        self.assertEqual(bundlefs.dir_list({}), ["_modules", "nginx"])
         self.assertNotIn("community/systemd-helper/unexpected.sls", bundlefs.file_list({}))
 
     def test_find_file_resolves_relative_manifest_paths_via_project_root(self) -> None:
@@ -157,5 +186,5 @@ class TestManifestAwareBundlefs(unittest.TestCase):
 
         files = bundlefs.file_list({})
 
-        self.assertIn("acme/nginx/init.sls", files)
+        self.assertIn("nginx/init.sls", files)
         self.assertIn("_modules/nginx.py", files)

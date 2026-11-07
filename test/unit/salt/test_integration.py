@@ -38,11 +38,12 @@ class TestSaltIntegration(unittest.TestCase):
             "auth_dirs", "cache_dirs", "executor_dirs", "grains_dirs", "log_handlers_dirs",
             "matchers_dirs", "metaproxy_dirs", "netapi_dirs", "pillar_dirs", "queue_dirs",
             "returner_dirs", "roster_dirs", "runner_dirs", "sdb_dirs", "serializers_dirs",
-            "outputter_dirs", "pkgdb_dirs", "pkgfiles_dirs", "top_dirs", "utils_dirs",
+            "outputter_dirs", "pkgdb_dirs", "pkgfiles_dirs", "utils_dirs",
             "wrapper_dirs", "render_dirs", "engines_dirs", "proxy_dirs", "cloud_dirs",
             "beacons_dirs", "thorium_dirs", "tokens_dirs", "wheel_dirs",
         ):
             self.assertEqual(getattr(loader, function_name)(), [])
+        self.assertEqual(loader.top_dirs(), [str(Path(loader.__file__).parent / "_tops")])
         self.assertEqual(loader.configure({"id": "minion"}), {"id": "minion"})
 
     def test_bundlefs_serves_package_and_special_module_files(self) -> None:

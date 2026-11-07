@@ -117,9 +117,12 @@ class TestManifestAwareLoader(unittest.TestCase):
         with patch.object(loader, "runtime_context", runtime_context, create=True):
             for namespace, callback_name in namespace_callbacks.items():
                 with self.subTest(namespace=namespace):
+                    expected = [str(self.active_package / f"_{namespace}")]
+                    if namespace == "tops":
+                        expected.insert(0, str(Path(loader.__file__).parent / "_tops"))
                     self.assertEqual(
                         getattr(loader, callback_name)({"id": "web-01"}),
-                        [str(self.active_package / f"_{namespace}")],
+                        expected,
                     )
 
     def test_loader_cache_keeps_directories_separate_for_each_manifest_fingerprint(self) -> None:

@@ -308,8 +308,8 @@ def pkgfiles_dirs(opts: Dict[str, Any] = None) -> List[str]:
 
 
 def top_dirs(opts: Dict[str, Any] = None) -> List[str]:
-    """Return paths to _tops directories in vendor formulas."""
-    return list(_get_loader_dirs(opts, "tops"))
+    """Return the SaltBundle top provider and vendor top modules."""
+    return [str(Path(__file__).parent / "_tops"), *_get_loader_dirs(opts, "tops")]
 
 
 def utils_dirs(opts: Dict[str, Any] = None) -> List[str]:

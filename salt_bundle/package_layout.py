@@ -67,6 +67,12 @@ def resolve_formula_name(package_path: Path) -> str:
     return package_path.name
 
 
+def resolve_formula_sls_name(package_path: Path) -> str:
+    """Return the conventional Salt state name without the package vendor."""
+    package_name = resolve_formula_name(package_path).rsplit("/", 1)[-1]
+    return package_name.removesuffix("-formula") or package_name
+
+
 def discover_package_paths(vendor_path: Path) -> list[Path]:
     """Discover packages in two-level vendor trees and legacy package roots."""
     if not vendor_path.is_dir():

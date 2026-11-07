@@ -14,6 +14,7 @@ from salt_bundle.package_layout import (
     detect_package_type,
     discover_package_paths,
     resolve_formula_name,
+    resolve_formula_sls_name,
     resolve_formula_state_root,
     resolve_namespace_dir,
 )
@@ -93,6 +94,16 @@ def _get_active_roots() -> list[tuple[Path, str]]:
         [str(root) for root, _ in roots],
     )
     return roots
+
+
+def _state_names(roots: list[tuple[Path, str]]) -> dict[Path, str]:
+    """Use short SLS names, falling back to full names on collisions."""
+    formulas = [root for root, kind in roots if kind == "formula"]
+    short_names = [resolve_formula_sls_name(root) for root in formulas]
+    return {
+        root: short if short_names.count(short) == 1 else resolve_formula_name(root)
+        for root, short in zip(formulas, short_names)
+    }
 
 
 def _find_project_config() -> Optional[Path]:
@@ -205,6 +216,7 @@ def find_file(path, saltenv="base", **kwargs):
     """
     manifest = runtime_context.get_manifest(globals().get("__opts__", {}))
     roots = _get_active_roots()
+    state_names = _state_names(roots)
     if not roots:
         return {'path': '', 'rel': ''}
 
@@ -244,10 +256,15 @@ def find_file(path, saltenv="base", **kwargs):
             except (FileNotFoundError, ValueError) as exc:
                 log.error("bundlefs: %s", exc)
                 continue
-            formula_name = resolve_formula_name(root)
+            formula_name = state_names[root]
             prefix = formula_name + "/"
-            if path.startswith(prefix):
-                rel_path = path[len(prefix):]
+            legacy_prefix = resolve_formula_name(root) + "/"
+            matched_prefix = next(
+                (candidate for candidate in (prefix, legacy_prefix) if path.startswith(candidate)),
+                None,
+            )
+            if matched_prefix:
+                rel_path = path[len(matched_prefix):]
                 full_path = state_root / rel_path
                 if full_path.is_file():
                     stat = full_path.stat()
@@ -288,10 +305,11 @@ def file_list(load):
     result = set()
     manifest = runtime_context.get_manifest(globals().get("__opts__", {}))
     roots = _get_active_roots()
+    state_names = _state_names(roots)
 
     # Special directories that should be exposed at root level for Salt auto-sync
     for package_path, package_type in roots:
-        formula_name = resolve_formula_name(package_path)
+        formula_name = state_names.get(package_path, resolve_formula_name(package_path))
         namespace_paths = {
             namespace_path: f"_{namespace}"
             for namespace in _SPECIAL_NAMESPACES
@@ -338,9 +356,10 @@ def dir_list(load):
     """
     result = set()
     roots = _get_active_roots()
+    state_names = _state_names(roots)
 
     for package_path, package_type in roots:
-        formula_name = resolve_formula_name(package_path)
+        formula_name = state_names.get(package_path, resolve_formula_name(package_path))
         namespace_paths = {
             namespace_path: f"_{namespace}"
             for namespace in _SPECIAL_NAMESPACES

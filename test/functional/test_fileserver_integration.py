@@ -5,6 +5,8 @@ Verifies that the custom fileserver discovers and serves files
 from vendor packages through Salt's cp module.
 """
 
+import shutil
+
 import pytest
 
 from conftest import requires_salt, salt_call
@@ -20,8 +22,47 @@ class TestFileserverFileListing:
         r = salt_call("cp.list_states", cwd=project_dir)
         assert r["returncode"] == 0, r["stderr"]
         states = r["json"]["local"]
-        # foo formula should be listed (init.sls or defaults.sls)
-        assert any("foo" in s for s in states) or len(states) >= 0
+        assert "foo" in states
+        assert "foo.defaults" in states
+
+    def test_formula_name_without_vendor_and_legacy_lookup(self, project_dir):
+        """Salt serves a namespaced package using its short formula SLS name."""
+        original = project_dir / "vendor" / "foo"
+        formula = project_dir / "vendor" / "someblackmagic" / "containerd-formula"
+        formula.parent.mkdir(parents=True)
+        original.rename(formula)
+        (formula / "FORMULA").write_text(
+            "name: someblackmagic/containerd-formula\n"
+            "version: 1.0.0\n"
+            "top_level_dir: containerd\n",
+            encoding="utf-8",
+        )
+        state_root = formula / "containerd"
+        state_root.mkdir()
+        shutil.move(str(formula / "init.sls"), str(state_root / "init.sls"))
+
+        listed = salt_call("cp.list_states", cwd=project_dir)
+        assert listed["returncode"] == 0, listed["stderr"]
+        assert "containerd" in listed["json"]["local"]
+        assert "someblackmagic.containerd-formula" not in listed["json"]["local"]
+
+        for sls_path in (
+            "containerd/init.sls",
+            "someblackmagic/containerd-formula/init.sls",
+        ):
+            fetched = salt_call(
+                "cp.get_file",
+                f"salt://{sls_path}",
+                str(project_dir / "fetched" / sls_path.replace("/", "_")),
+                "makedirs=True",
+                cwd=project_dir,
+            )
+            assert fetched["returncode"] == 0, fetched["stderr"]
+            assert fetched["json"]["local"], fetched
+
+        loaded = salt_call("test_module.ping", cwd=project_dir)
+        assert loaded["returncode"] == 0, loaded["stderr"]
+        assert loaded["json"]["local"] == "module loaded"
 
     def test_fileserver_lists_module_files(self, project_dir):
         """cp.list_master should include _modules files from vendor."""

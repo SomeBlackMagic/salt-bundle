@@ -14,6 +14,7 @@ import yaml
 from salt_bundle.activation.manifest import ManifestPackageEntry, RuntimeManifest
 from salt_bundle.package_layout import (
     resolve_formula_name as _resolve_formula_name,
+    resolve_formula_sls_name as _resolve_formula_sls_name,
     resolve_formula_state_root as _resolve_formula_state_root,
     resolve_namespace_dir as _resolve_namespace_dir,
 )
@@ -134,6 +135,12 @@ class SaltSSHRuntimeBackend:
     ) -> None:
         """Copy active Salt namespaces into a Thin staging directory."""
         thin_dir.mkdir(parents=True, exist_ok=True)
+        formula_paths = [
+            project_root / package.path
+            for package in manifest.packages
+            if package.package_type == "formula"
+        ]
+        short_names = [_resolve_formula_sls_name(path) for path in formula_paths]
         for package in manifest.packages:
             package_path = project_root / package.path
             if not package_path.is_dir():
@@ -153,7 +160,11 @@ class SaltSSHRuntimeBackend:
                 cls._copy_extension_init(source, package, namespace, thin_dir)
 
             if package.package_type == "formula":
-                cls._copy_formula_states(package_path, thin_dir)
+                cls._copy_formula_states(
+                    package_path,
+                    thin_dir,
+                    short_names.count(_resolve_formula_sls_name(package_path)) == 1,
+                )
 
     @staticmethod
     def _destination_for(
@@ -172,20 +183,23 @@ class SaltSSHRuntimeBackend:
     def _copy_formula_states(
         package_path: Path,
         thin_dir: Path,
+        use_short_name: bool = True,
     ) -> None:
         """Copy SLS state files from the formula's state root into the Thin payload."""
         try:
             state_root = _resolve_formula_state_root(package_path)
         except (FileNotFoundError, ValueError):
             return
-        formula_name = _resolve_formula_name(package_path)
-        destination = thin_dir / formula_name
-        shutil.copytree(
-            state_root,
-            destination,
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns("_*"),
-        )
+        names = [_resolve_formula_name(package_path)]
+        if use_short_name:
+            names.insert(0, _resolve_formula_sls_name(package_path))
+        for formula_name in dict.fromkeys(names):
+            shutil.copytree(
+                state_root,
+                thin_dir / formula_name,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("_*"),
+            )
 
     @staticmethod
     def _copy_extension_init(
