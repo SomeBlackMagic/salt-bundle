@@ -12,7 +12,11 @@ from typing import Callable, Mapping, Sequence
 import yaml
 
 from salt_bundle.activation.manifest import ManifestPackageEntry, RuntimeManifest
-from salt_bundle.package_layout import resolve_namespace_dir as _resolve_namespace_dir
+from salt_bundle.package_layout import (
+    resolve_formula_name as _resolve_formula_name,
+    resolve_formula_state_root as _resolve_formula_state_root,
+    resolve_namespace_dir as _resolve_namespace_dir,
+)
 
 from .base import ExecutionResult, PreparedRuntime, RuntimeContext, SaltCommand
 
@@ -148,6 +152,9 @@ class SaltSSHRuntimeBackend:
                 shutil.copytree(source, destination, dirs_exist_ok=True)
                 cls._copy_extension_init(source, package, namespace, thin_dir)
 
+            if package.package_type == "formula":
+                cls._copy_formula_states(package_path, thin_dir)
+
     @staticmethod
     def _destination_for(
         source: Path,
@@ -160,6 +167,25 @@ class SaltSSHRuntimeBackend:
             return thin_dir / f"_{namespace}"
         extension_root = source.parent
         return thin_dir / "saltext" / extension_root.name / namespace
+
+    @staticmethod
+    def _copy_formula_states(
+        package_path: Path,
+        thin_dir: Path,
+    ) -> None:
+        """Copy SLS state files from the formula's state root into the Thin payload."""
+        try:
+            state_root = _resolve_formula_state_root(package_path)
+        except (FileNotFoundError, ValueError):
+            return
+        formula_name = _resolve_formula_name(package_path)
+        destination = thin_dir / formula_name
+        shutil.copytree(
+            state_root,
+            destination,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("_*"),
+        )
 
     @staticmethod
     def _copy_extension_init(

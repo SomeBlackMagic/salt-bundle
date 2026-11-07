@@ -64,13 +64,22 @@ _SPECIAL_NAMESPACES = (
 )
 
 
+def _resolve_manifest_package_path(path: str, opts: dict) -> Path:
+    """Resolve a portable manifest path using the project root from Salt opts."""
+    package_path = Path(path)
+    if package_path.is_absolute():
+        return package_path
+    project_root = opts.get("salt_bundle_runtime_project_root")
+    return Path(project_root) / package_path if project_root else package_path
+
+
 def _get_active_roots() -> list[tuple[Path, str]]:
     """Return manifest packages, or retain the legacy vendor scan."""
     opts = globals().get("__opts__", {})
     manifest = runtime_context.get_manifest(opts)
     if manifest is not None:
         roots = [
-            (Path(package.path), package.package_type)
+            (_resolve_manifest_package_path(package.path, opts), package.package_type)
             for package in manifest.packages
         ]
     else:

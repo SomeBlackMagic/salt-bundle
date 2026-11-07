@@ -195,6 +195,87 @@ class TestSaltSSHRuntimeBackend(unittest.TestCase):
             "SOURCE = 'mycloud'\n",
         )
 
+    def test_prepare_materializes_formula_state_files_from_top_level_dir(self) -> None:
+        backend_module = self._backend_module()
+        self.assertIsNotNone(backend_module)
+        formula_dir = self.vendor_dir / "acme" / "nginx"
+        (formula_dir / "states").mkdir(parents=True)
+        (formula_dir / "states" / "init.sls").write_text("nginx:\n  pkg.installed\n")
+        (formula_dir / "states" / "config.sls").write_text("nginx_conf:\n  file.managed\n")
+        (formula_dir / "FORMULA").write_text(
+            "name: acme/nginx\nversion: 1.0.0\ntop_level_dir: states\n"
+        )
+        (formula_dir / "_modules").mkdir()
+        (formula_dir / "_modules" / "nginx.py").write_text("# module\n")
+        manifest = self._manifest(
+            "state-runtime",
+            ("acme/nginx", "formula", "vendor/acme/nginx"),
+        )
+
+        prepared = backend_module.SaltSSHRuntimeBackend().prepare(
+            ["ssh-a"], manifest, self._context()
+        )
+
+        payload_dir = prepared.backend_state.thin_dir
+        self.assertEqual(
+            (payload_dir / "acme/nginx" / "init.sls").read_text(),
+            "nginx:\n  pkg.installed\n",
+        )
+        self.assertEqual(
+            (payload_dir / "acme/nginx" / "config.sls").read_text(),
+            "nginx_conf:\n  file.managed\n",
+        )
+        self.assertTrue((payload_dir / "_modules" / "nginx.py").exists())
+
+    def test_prepare_materializes_formula_state_files_without_top_level_dir(self) -> None:
+        backend_module = self._backend_module()
+        self.assertIsNotNone(backend_module)
+        formula_dir = self.vendor_dir / "acme" / "simple"
+        formula_dir.mkdir(parents=True)
+        (formula_dir / "init.sls").write_text("simple:\n  test.nop\n")
+        (formula_dir / "FORMULA").write_text(
+            "name: acme/simple\nversion: 1.0.0\n"
+        )
+        manifest = self._manifest(
+            "simple-runtime",
+            ("acme/simple", "formula", "vendor/acme/simple"),
+        )
+
+        prepared = backend_module.SaltSSHRuntimeBackend().prepare(
+            ["ssh-a"], manifest, self._context()
+        )
+
+        payload_dir = prepared.backend_state.thin_dir
+        self.assertEqual(
+            (payload_dir / "acme/simple" / "init.sls").read_text(),
+            "simple:\n  test.nop\n",
+        )
+
+    def test_prepare_excludes_underscore_dirs_from_state_root_copy(self) -> None:
+        backend_module = self._backend_module()
+        self.assertIsNotNone(backend_module)
+        formula_dir = self.vendor_dir / "acme" / "mixed"
+        formula_dir.mkdir(parents=True)
+        (formula_dir / "init.sls").write_text("mixed:\n  test.nop\n")
+        (formula_dir / "FORMULA").write_text(
+            "name: acme/mixed\nversion: 1.0.0\n"
+        )
+        (formula_dir / "_modules").mkdir()
+        (formula_dir / "_modules" / "m.py").write_text("# mod\n")
+        manifest = self._manifest(
+            "mixed-runtime",
+            ("acme/mixed", "formula", "vendor/acme/mixed"),
+        )
+
+        prepared = backend_module.SaltSSHRuntimeBackend().prepare(
+            ["ssh-a"], manifest, self._context()
+        )
+
+        payload_dir = prepared.backend_state.thin_dir
+        self.assertTrue((payload_dir / "acme/mixed" / "init.sls").exists())
+        self.assertFalse((payload_dir / "acme/mixed" / "_modules").exists())
+        self.assertTrue((payload_dir / "_modules" / "m.py").exists())
+
     def test_execute_delegates_the_prepared_group_to_the_salt_ssh_adapter(self) -> None:
         backend_module = self._backend_module()
         self.assertIsNotNone(

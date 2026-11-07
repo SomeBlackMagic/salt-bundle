@@ -47,7 +47,13 @@ class TestManifestAwareBundlefs(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
 
-    def _manifest(self) -> RuntimeManifest:
+    def _manifest(self, *, relative: bool = False) -> RuntimeManifest:
+        if relative:
+            formula_path = "vendor/acme/nginx"
+            extension_path = "vendor/community/systemd-helper"
+        else:
+            formula_path = str(self.active_formula)
+            extension_path = str(self.extension)
         return RuntimeManifest(
             schema_version=1,
             saltenv="base",
@@ -58,20 +64,23 @@ class TestManifestAwareBundlefs(unittest.TestCase):
                     version="1.0.0",
                     package_type="formula",
                     digest="sha256:nginx",
-                    path=str(self.active_formula),
+                    path=formula_path,
                 ),
                 ManifestPackageEntry(
                     name=PackageName.parse("community/systemd-helper"),
                     version="1.0.0",
                     package_type="extension",
                     digest="sha256:systemd-helper",
-                    path=str(self.extension),
+                    path=extension_path,
                 ),
             ),
         )
 
-    def _opts(self) -> dict[str, RuntimeManifest]:
-        return {"salt_bundle_runtime_manifest": self._manifest()}
+    def _opts(self, *, relative: bool = False) -> dict:
+        opts: dict = {"salt_bundle_runtime_manifest": self._manifest(relative=relative)}
+        if relative:
+            opts["salt_bundle_runtime_project_root"] = str(self.project_dir)
+        return opts
 
     def test_find_file_serves_formula_state_from_an_active_package_only(self) -> None:
         bundlefs.__opts__ = self._opts()
@@ -135,3 +144,18 @@ class TestManifestAwareBundlefs(unittest.TestCase):
         )
         self.assertEqual(bundlefs.dir_list({}), ["_modules", "acme/nginx"])
         self.assertNotIn("community/systemd-helper/unexpected.sls", bundlefs.file_list({}))
+
+    def test_find_file_resolves_relative_manifest_paths_via_project_root(self) -> None:
+        bundlefs.__opts__ = self._opts(relative=True)
+
+        found = bundlefs.find_file("acme/nginx/init.sls")
+
+        self.assertEqual(found["path"], str(self.active_formula / "states" / "init.sls"))
+
+    def test_file_list_resolves_relative_manifest_paths_via_project_root(self) -> None:
+        bundlefs.__opts__ = self._opts(relative=True)
+
+        files = bundlefs.file_list({})
+
+        self.assertIn("acme/nginx/init.sls", files)
+        self.assertIn("_modules/nginx.py", files)
