@@ -2,6 +2,13 @@
 set -e
 
 SITE_PACKAGES=$(/opt/saltstack/salt/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+PYTHON_VERSION=$(/opt/saltstack/salt/bin/python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+VENDOR_DIR="/opt/saltstack/salt-bundle/vendor/python${PYTHON_VERSION}"
+
+if [ ! -d "$VENDOR_DIR" ]; then
+  echo "ERROR: No bundled dependencies for Salt Python ${PYTHON_VERSION}" >&2
+  exit 1
+fi
 
 # Create symlink for main module
 if [ ! -e "${SITE_PACKAGES}/salt_bundle" ]; then
@@ -9,7 +16,7 @@ if [ ! -e "${SITE_PACKAGES}/salt_bundle" ]; then
 fi
 
 # Create symlinks for vendor dependencies (directories and .py files)
-for vendoritem in /opt/saltstack/salt-bundle/vendor/*; do
+for vendoritem in "$VENDOR_DIR"/*; do
   basename=$(basename "$vendoritem")
   # Skip special items
   case "$basename" in
@@ -21,6 +28,12 @@ for vendoritem in /opt/saltstack/salt-bundle/vendor/*; do
       ln -s "$vendoritem" "${SITE_PACKAGES}/${basename}"
     fi
   fi
+done
+
+for metadata in /opt/saltstack/salt-bundle/lib/salt_bundle-*.dist-info; do
+  [ -d "$metadata" ] || continue
+  target="${SITE_PACKAGES}/$(basename "$metadata")"
+  [ -e "$target" ] || ln -s "$metadata" "$target"
 done
 
 exit 0

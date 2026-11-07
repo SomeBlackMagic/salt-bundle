@@ -2,6 +2,8 @@
 set -e
 
 SITE_PACKAGES=$(/opt/saltstack/salt/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+PYTHON_VERSION=$(/opt/saltstack/salt/bin/python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+VENDOR_DIR="/opt/saltstack/salt-bundle/vendor/python${PYTHON_VERSION}"
 
 # Remove symlinks created by postinst
 if [ -L "${SITE_PACKAGES}/salt_bundle" ]; then
@@ -9,14 +11,22 @@ if [ -L "${SITE_PACKAGES}/salt_bundle" ]; then
 fi
 
 # Remove vendor symlinks (directories and files)
-for vendoritem in /opt/saltstack/salt-bundle/vendor/*; do
+for vendoritem in "$VENDOR_DIR"/*; do
   basename=$(basename "$vendoritem")
   case "$basename" in
     __pycache__|*.dist-info|bin) continue ;;
   esac
 
-  if [ -L "${SITE_PACKAGES}/${basename}" ]; then
+  if [ "$(readlink "${SITE_PACKAGES}/${basename}")" = "$vendoritem" ]; then
     rm -f "${SITE_PACKAGES}/${basename}"
+  fi
+done
+
+for metadata in /opt/saltstack/salt-bundle/lib/salt_bundle-*.dist-info; do
+  [ -d "$metadata" ] || continue
+  target="${SITE_PACKAGES}/$(basename "$metadata")"
+  if [ "$(readlink "$target")" = "$metadata" ]; then
+    rm -f "$target"
   fi
 done
 

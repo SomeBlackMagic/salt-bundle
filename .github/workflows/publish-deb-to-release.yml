@@ -8,6 +8,19 @@ on:
 jobs:
   build-deb:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - salt_series: "3006"
+            next_series: "3007"
+            python_versions: "3.10 3.11"
+          - salt_series: "3007"
+            next_series: "3008"
+            python_versions: "3.11"
+          - salt_series: "3008"
+            next_series: "3009"
+            python_versions: "3.14"
 
     permissions:
       contents: write
@@ -15,7 +28,6 @@ jobs:
     env:
       PKG: salt-bundle
       INSTALL_ROOT: /opt/saltstack/salt-bundle
-      SALT_PYTHON_VERSION: "3.11"
 
     steps:
       - uses: actions/checkout@v4
@@ -39,32 +51,26 @@ jobs:
 
       - name: Vendor ONLY non-salt deps
         run: |
-          mkdir vendor
-          python3 -m pip install --target vendor \
-            --platform manylinux_2_17_x86_64 \
-            --implementation cp \
-            --python-version "${SALT_PYTHON_VERSION/./}" \
-            --abi "cp${SALT_PYTHON_VERSION/./}" \
-            --only-binary=:all: \
-            "pydantic>=2" \
-            "pydantic-core" \
-            "typing-extensions" \
-            "annotated-types" \
-            "semver>=3" \
-            "click>=8"
+          for python_version in ${{ matrix.python_versions }}; do
+            python_abi="${python_version/./}"
+            python3 -m pip install --target "vendor/python${python_version}" \
+              --platform manylinux_2_17_x86_64 \
+              --implementation cp \
+              --python-version "$python_abi" \
+              --abi "cp${python_abi}" \
+              --only-binary=:all: \
+              "pydantic>=2" \
+              "pydantic-core" \
+              "typing-extensions" \
+              "annotated-types" \
+              "semver>=3" \
+              "click>=8"
+          done
 
       - name: Extract package to lib/
         run: |
           mkdir -p lib
           unzip -q dist/*.whl -d lib/
-
-      - name: Prepare dist-info for Salt site-packages
-        run: |
-          mkdir -p site-packages
-          # Copy ONLY .dist-info to Salt's site-packages for entry_points discovery
-          # This allows importlib.metadata to find our entry_points while keeping
-          # the actual code isolated in /opt/saltstack/salt-bundle/lib
-          cp -r lib/salt_bundle-*.dist-info site-packages/
 
       - name: Prepare packaging scripts
         run: |
@@ -83,16 +89,18 @@ jobs:
           fpm -s dir -t deb \
             -n "${PKG}" \
             -v "${VERSION}" \
+            --iteration "salt${{ matrix.salt_series }}" \
             -a amd64 \
-            --depends salt-common \
+            -p "salt-bundle_${VERSION}_salt${{ matrix.salt_series }}_amd64.deb" \
+            --depends "salt-common (>= ${{ matrix.salt_series }})" \
+            --depends "salt-common (<< ${{ matrix.next_series }})" \
             --after-install scripts/postinst \
             --before-remove scripts/prerm \
             --prefix / \
             vendor/=/opt/saltstack/salt-bundle/vendor \
             lib/=/opt/saltstack/salt-bundle/lib \
             bin/salt-bundle=/opt/saltstack/bin/salt-bundle \
-            usr-bin/salt-bundle=/usr/bin/salt-bundle \
-            site-packages/=/opt/saltstack/salt/lib/python${SALT_PYTHON_VERSION}/site-packages/
+            usr-bin/salt-bundle=/usr/bin/salt-bundle
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
