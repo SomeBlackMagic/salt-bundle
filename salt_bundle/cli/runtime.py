@@ -101,7 +101,10 @@ def validate(ctx: click.Context) -> None:
         resolver = _resolver(ctx.obj["PROJECT_DIR"])
         if resolver.top_bundle is None:
             resolver.resolve("*")
-            click.echo("Warning: no top_bundle.sls found, using legacy global activation")
+            click.echo(
+                f"Warning: top_bundle.sls not found at {resolver.top_bundle_path}; "
+                "using legacy global activation"
+            )
         else:
             for environment in resolver.top_bundle.environments.values():
                 for rule in environment.rules:

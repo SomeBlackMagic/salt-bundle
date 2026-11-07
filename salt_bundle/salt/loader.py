@@ -66,6 +66,14 @@ def _load_project_config(cfg: Path) -> Optional[Dict[str, Any]]:
         model = SaltfileConfig(**raw)
         data = model.model_dump()
 
+        top_bundle_path = cfg.parent / data["runtime"]["top_bundle_file"]
+        if not top_bundle_path.is_file():
+            log.warning(
+                "SaltBundle: top_bundle.sls not found at %s "
+                "(check Saltfile runtime.top_bundle_file)",
+                top_bundle_path,
+            )
+
         # Save to cache
         _CACHE['config_data'] = data
         _CACHE['config_mtime'] = current_mtime

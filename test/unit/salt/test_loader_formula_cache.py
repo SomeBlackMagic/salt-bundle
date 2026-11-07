@@ -54,6 +54,7 @@ class TestGetFormulaPathsCaching:
         assert result == [formula]
         mock_discover.assert_called_once()
 
+
     def test_discovers_formulas_after_empty_vendor_dir_is_populated(
         self, project_dir,
     ):
@@ -97,3 +98,12 @@ class TestGetFormulaPathsCaching:
         assert second == [formula]
         # discover_package_paths called only once due to caching
         mock_discover.assert_called_once()
+
+
+def test_missing_configured_top_bundle_logs_path(tmp_path, caplog):
+    config = tmp_path / "Saltfile"
+    config.write_text("runtime:\n  top_bundle_file: srv/salt/top_bundle.sls\n")
+    with patch.dict(loader._CACHE, config_path=None, config_mtime=None, config_data=None):
+        loader._load_project_config(config)
+    assert str(tmp_path / "srv/salt/top_bundle.sls") in caplog.text
+    assert "check Saltfile runtime.top_bundle_file" in caplog.text

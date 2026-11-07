@@ -110,6 +110,7 @@ class TestRuntimeCommands(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertIn("legacy", result.output.lower())
+        self.assertIn(str(self.project_dir / "salt" / "top_bundle.sls"), result.output)
 
     def test_runtime_matrix_displays_each_target_with_its_fingerprint_and_packages(self) -> None:
         result = self.invoke("runtime", "matrix", "web-01", "db-01")
