@@ -1,0 +1,3 @@
+name: example/foo-formula
+version: 1.0.0
+top_level_dir: foo

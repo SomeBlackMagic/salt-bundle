@@ -1,0 +1,11 @@
+roster_file: /tmp/salt-pkg/etc/salt-ssh/roster
+cachedir: /tmp/salt-pkg/cache
+pki_dir: /tmp/salt-pkg/pki
+fileserver_backend:
+  - roots
+  - bundlefs
+file_roots:
+  base:
+    - /tmp/salt-pkg/srv
+master_tops:
+  salt_bundle: true

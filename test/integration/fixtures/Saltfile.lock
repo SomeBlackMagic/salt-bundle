@@ -1,0 +1,9 @@
+dependencies:
+  example/foo-formula:
+    version: 1.0.0
+    repository: local
+    url: local
+    digest: linked
+    type: formula
+    source_type: path
+    linked: true

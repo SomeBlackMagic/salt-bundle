@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -exuo pipefail
 
-apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server salt-ssh
 mkdir -p /run/sshd /root/.ssh /tmp/salt-pkg/srv/salt /tmp/salt-pkg/etc/salt-ssh
 chmod 700 /root/.ssh
 ssh-keygen -q -t ed25519 -N '' -f /tmp/salt-pkg/ssh_key

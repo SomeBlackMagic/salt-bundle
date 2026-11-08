@@ -1,0 +1,7 @@
+kitchen-target:
+  host: 127.0.0.1
+  user: root
+  priv: /tmp/salt-pkg/ssh_key
+  ssh_options:
+    - StrictHostKeyChecking=no
+    - UserKnownHostsFile=/dev/null

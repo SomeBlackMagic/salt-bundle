@@ -1,0 +1,5 @@
+name: salt-bundle-integration
+title: Salt Bundle integration
+version: 1.0.0
+supports:
+  - os-family: linux

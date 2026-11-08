@@ -1,0 +1,3 @@
+base:
+  '*':
+    - kitchen_base
