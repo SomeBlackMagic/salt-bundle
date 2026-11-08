@@ -1,0 +1,65 @@
+salt-call:
+  local: True
+  config_dir: ./etc/salt
+  #cachedir: ./var/cache/call
+  #log_file: ./var/log/salt/minion
+  #pidfile: ./var/run/salt/minion.pid
+  pki_dir: ./pki/salt
+  file_roots: ./srv/salt
+  pillar_roots: ./srv/pillar
+  #sock_dir: ./var/run/salt
+  #state_output: mixed
+  log_level: info
+
+
+salt-master:
+  config_dir: ./etc/salt
+  #cachedir: ./var/cache/master
+  #log_file: ./var/log/master
+  #pidfile: ./var/run/master.pid
+  pki_dir: ./pki/salt
+  file_roots: ./srv/salt
+  pillar_roots: ./srv/pillar
+  #sock_dir: ./var/run/salt
+  autosign_file: ./pki/salt/autosign.conf
+  log_level: info
+
+salt-minion:
+  config_dir: ./etc/salt
+  #cachedir: ./var/cache/salt
+  #log_file: ./var/log/salt/minion
+  #pidfile: ./var/run/salt/minion.pid
+  #sock_dir: ./var/run/salt
+  pki_dir: ./pki/salt
+  file_roots: ./srv/salt
+  pillar_roots: ./srv/pillar
+  log_level: info
+
+salt-key:
+  config_dir: ./etc/salt
+  pki_dir: ./pki/salt/master
+  #log_file: ./var/log/salt/key
+  log_level: info
+
+salt:
+  config_dir: ./etc/salt
+  #cachedir: ./var/cache/salt
+  #log_file: ./var/log/salt/salt
+  pki_dir: ./pki/salt
+  #sock_dir: ./var/run/salt
+
+salt-ssh:
+  config_dir: ./etc/salt-ssh
+  pki_dir: ./pki/salt/ssh
+  roster_file: ./etc/salt-ssh/roster
+
+salt-cloud:
+  # salt-cloud configs live in ./etc/cloud.*.d
+  config_dir: ./etc
+
+
+vendor_dir: vendor
+
+runtime:
+  top_bundle_file: srv/salt/top_bundle.sls
+  cache_dir: /tmp/salt-bundle-runtime

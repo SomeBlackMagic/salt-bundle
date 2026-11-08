@@ -1,3 +1,0 @@
-vendor_dir: vendor
-runtime:
-  top_bundle_file: srv/top_bundle.sls

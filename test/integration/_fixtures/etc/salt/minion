@@ -1,0 +1,11 @@
+file_roots:
+  base:
+    - /workspace/srv/salt
+
+fileserver_backend:
+  - roots
+  - bundlefs
+
+pillar_roots:
+  base:
+    - /workspace/srv/pillar

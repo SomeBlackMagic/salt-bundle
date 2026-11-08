@@ -1,0 +1,16 @@
+roster_file: /workspace/etc/salt-ssh/roster
+
+fileserver_backend:
+  - roots
+  - bundlefs
+
+file_roots:
+  base:
+    - /workspace/srv/salt
+
+pillar_roots:
+  base:
+    - /workspace/srv/pillar
+
+master_tops:
+  salt_bundle: true

@@ -7,3 +7,11 @@ dependencies:
     type: formula
     source_type: path
     linked: true
+  example/test-extension:
+    version: 1.0.0
+    repository: local
+    url: local
+    digest: linked
+    type: extension
+    source_type: path
+    linked: true

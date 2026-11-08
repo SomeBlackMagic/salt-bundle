@@ -1,5 +1,0 @@
-name: salt-bundle-ssh
-title: SaltBundle SSH integration
-version: 1.0.0
-supports:
-  - os-family: linux
