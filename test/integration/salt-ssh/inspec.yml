@@ -1,4 +1,4 @@
-name: salt-bundle-integration
+name: salt-bundle-integration-salt-ssh
 title: Salt Bundle integration
 version: 1.0.0
 supports:
