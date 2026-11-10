@@ -35,7 +35,7 @@ transport:
 
 
 platforms:
-  - name: debian-12
+  - name: debian-12-salt-3006
     driver:
       image: ghcr.io/someblackmagic/salt-docker-images/kitchen-debian-12:3006.30
       run_command: /lib/systemd/systemd
@@ -45,7 +45,27 @@ platforms:
         - /run
         - /run/lock
 
-  - name: ubuntu-2404
+  - name: debian-12-salt-3007
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-debian-12:3007.17
+      run_command: /lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+  - name: debian-12-salt-3008
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-debian-12:3008.5
+      run_command: /lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+  - name: ubuntu-2404-salt-3006
     driver:
       image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2404:3006.30
       run_command: /lib/systemd/systemd
@@ -55,8 +75,33 @@ platforms:
         - /run
         - /run/lock
 
+  - name: ubuntu-2404-salt-3007
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2404:3007.17
+      run_command: /lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+  - name: ubuntu-2404-salt-3008
+    driver:
+      image: ghcr.io/someblackmagic/salt-docker-images/kitchen-ubuntu-2404:3008.5
+      run_command: /lib/systemd/systemd
+      env:
+        - container=docker
+      tmpfs:
+        - /run
+        - /run/lock
+
+
 suites:
   - name: salt-call
     verifier:
       inspec_tests:
         - test/integration/salt-call
+  - name: salt-ssh
+    verifier:
+      inspec_tests:
+        - test/integration/salt-ssh

@@ -1,5 +1,7 @@
 """Resolve dependencies declared in Saltfile."""
 
+import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +21,7 @@ from salt_bundle.dependencies.path_source import (
 )
 from salt_bundle.dependencies.saltfile import load_saltfile
 from salt_bundle.storage import vendor
+from salt_bundle.package_layout import detect_package_type, discover_package_paths, resolve_namespace_dir
 
 
 def _load_index(source: str, indexes: dict[str, object]) -> object:
@@ -170,7 +173,7 @@ def update(ctx):
                 )
                 vendor.install_package_to_vendor(archive_path, package_name, vendor_dir)
 
-        _sync_salt_extensions()
+        _sync_salt_extensions(project_dir, vendor_dir)
         click.echo("Dependencies updated and installed!")
     except Exception as error:
         click.echo(f"Error: {error}", err=True)
@@ -180,10 +183,45 @@ def update(ctx):
         sys.exit(1)
 
 
-def _sync_salt_extensions() -> None:
+def _sync_salt_extensions(project_dir: Path, vendor_dir: Path) -> None:
     try:
+        command = ["salt-call", "--local"]
+        project_config_dir = project_dir / "etc" / "salt"
+        if project_config_dir.is_dir():
+            command.extend(["-c", str(project_config_dir)])
+        config_result = subprocess.run(
+            [*command, "config.get", "extension_modules", "--out=json"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if config_result.returncode == 0:
+            extmods = json.loads(config_result.stdout).get("local")
+            if isinstance(extmods, str) and extmods:
+                utils_target = Path(extmods) / "utils"
+                utils_files: dict[str, Path] = {}
+                for package in discover_package_paths(vendor_dir):
+                    utils_source = resolve_namespace_dir(
+                        package, detect_package_type(package), "utils"
+                    )
+                    if utils_source is None:
+                        continue
+                    for source in utils_source.glob("*.py"):
+                        previous = utils_files.get(source.name)
+                        if previous is not None:
+                            raise ValueError(
+                                f"Conflicting Salt utils {source.name}: {previous} and {source}"
+                            )
+                        utils_files[source.name] = source
+                if utils_files:
+                    utils_target.mkdir(parents=True, exist_ok=True)
+                    for name, source in utils_files.items():
+                        shutil.copy2(source, utils_target / name)
+        command.append("saltutil.sync_all")
         result = subprocess.run(
-            ["salt-call", "--local", "saltutil.sync_all"],
+            command,
+            cwd=project_dir,
             capture_output=True,
             text=True,
             check=False,

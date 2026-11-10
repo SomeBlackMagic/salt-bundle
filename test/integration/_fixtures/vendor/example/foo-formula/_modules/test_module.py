@@ -16,6 +16,10 @@ def probe_loaders():
         "executors": ("executor", "executor_dirs", "test_executor.run", ()),
         "matchers": ("matcher", "matchers_dirs", "test_matcher.match", ("*",)),
         "serializers": ("serializer", "serializers_dirs", "test_serializer.serialize", ("loaded",)),
+        "tops": ("top", "top_dirs", "test_top.top", ()),
+        "pillar": ("pillar", "pillar_dirs", "test_pillar.ext_pillar", ("kitchen-target", {})),
+        "cache": ("cache", "cache_dirs", "test_cache.fetch", ("test-bank", "test-key", "/tmp")),
+        "sdb": ("sdb", "sdb_dirs", "test_sdb.get", ("test-key",)),
     }
     results = {}
     for namespace, (tag, entrypoint, function, args) in cases.items():

@@ -49,7 +49,7 @@ def install(ctx):
                 )
                 vendor.install_package_to_vendor(archive_path, package_name, vendor_dir)
 
-        _sync_salt_extensions()
+        _sync_salt_extensions(project_dir, vendor_dir)
         click.echo("Installation complete!")
     except Exception as error:
         click.echo(f"Error: {error}", err=True)

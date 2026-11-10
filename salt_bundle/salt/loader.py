@@ -173,9 +173,7 @@ def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, 
     """Get active runtime directories, or preserve legacy global activation."""
     effective_opts = opts if opts is not None else globals().get("__opts__", {})
     manifest = runtime_context.get_manifest(effective_opts)
-    if manifest is None:
-        paths = _get_module_dirs(namespace)
-    else:
+    if manifest is not None:
         paths = _get_manifest_dirs(
             namespace,
             manifest.fingerprint,
@@ -184,6 +182,11 @@ def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, 
                 for package in manifest.packages
             ),
         )
+    elif opts is not None and effective_opts.get("id"):
+        target_paths = _get_ssh_target_dirs(effective_opts, namespace)
+        paths = target_paths if target_paths is not None else _get_module_dirs(namespace)
+    else:
+        paths = _get_module_dirs(namespace)
     if paths and namespace not in _logged_namespaces:
         _logged_namespaces.add(namespace)
         log.debug(
@@ -193,6 +196,41 @@ def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, 
             list(paths),
         )
     return paths
+
+
+def _get_ssh_target_dirs(opts: Dict[str, Any], namespace: str) -> tuple[str, ...] | None:
+    """Resolve the roster target through the same project activation rules."""
+    from salt_bundle.activation.parser import load_top_bundle
+    from salt_bundle.activation.resolver import ActivationResolver
+    from salt_bundle.dependencies.lockfile import load_lockfile
+    from salt_bundle.dependencies.saltfile import load_saltfile
+    from salt_bundle.storage.vendor import get_vendor_dir
+
+    config_dir = Path(opts.get("config_dir") or Path.cwd()).resolve()
+    project_dir = next(
+        (parent for parent in (config_dir, *config_dir.parents) if (parent / "Saltfile").is_file()),
+        None,
+    )
+    if project_dir is None:
+        return None
+
+    config = load_saltfile(project_dir)
+    top_path = project_dir / config.runtime.top_bundle_file
+    resolver = ActivationResolver(
+        top_bundle=load_top_bundle(top_path) if top_path.is_file() else None,
+        lock_data=load_lockfile(project_dir),
+        vendor_root=get_vendor_dir(project_dir, config.vendor_dir),
+        require_bundle_top=config.runtime.require_bundle_top,
+        top_bundle_path=top_path,
+    )
+    active = resolver.resolve(opts["id"], saltenv=opts.get("saltenv") or "base")
+    return tuple(
+        str(directory.resolve())
+        for package in active.packages
+        if (directory := resolve_namespace_dir(
+            package.path, package.package_type, namespace
+        )) is not None
+    )
 
 
 def _resolve_manifest_package_path(path: str, opts: Dict[str, Any]) -> Path:
