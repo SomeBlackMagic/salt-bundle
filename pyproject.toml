@@ -58,7 +58,6 @@ thorium_dirs = "salt_bundle.salt.loader:thorium_dirs"
 tokens_dirs = "salt_bundle.salt.loader:tokens_dirs"
 wheel_dirs = "salt_bundle.salt.loader:wheel_dirs"
 fileserver_dirs = "salt_bundle.salt.loader:fileserver_dirs"
-configure = "salt_bundle.salt.loader:configure"
 
 [project.entry-points."salt.loader.ext_pillar"]
 saltbundle = "salt_bundle.salt.pillar:ext_pillar"

@@ -198,13 +198,23 @@ def _get_loader_dirs(opts: Dict[str, Any] | None, namespace: str) -> tuple[str, 
     return paths
 
 
-def _get_ssh_target_dirs(opts: Dict[str, Any], namespace: str) -> tuple[str, ...] | None:
-    """Resolve the roster target through the same project activation rules."""
+_ssh_active_cache: Dict[tuple, "ActivePackageSet"] = {}
+
+
+def _get_ssh_active_set(opts: Dict[str, Any]) -> "ActivePackageSet | None":
+    """Resolve and cache the active package set for an SSH target."""
     from salt_bundle.activation.parser import load_top_bundle
     from salt_bundle.activation.resolver import ActivationResolver
     from salt_bundle.dependencies.lockfile import load_lockfile
     from salt_bundle.dependencies.saltfile import load_saltfile
     from salt_bundle.storage.vendor import get_vendor_dir
+
+    target = opts["id"]
+    saltenv = opts.get("saltenv") or "base"
+    cache_key = (target, saltenv)
+
+    if cache_key in _ssh_active_cache:
+        return _ssh_active_cache[cache_key]
 
     config_dir = Path(opts.get("config_dir") or Path.cwd()).resolve()
     project_dir = next(
@@ -223,7 +233,16 @@ def _get_ssh_target_dirs(opts: Dict[str, Any], namespace: str) -> tuple[str, ...
         require_bundle_top=config.runtime.require_bundle_top,
         top_bundle_path=top_path,
     )
-    active = resolver.resolve(opts["id"], saltenv=opts.get("saltenv") or "base")
+    active = resolver.resolve(target, saltenv=saltenv)
+    _ssh_active_cache[cache_key] = active
+    return active
+
+
+def _get_ssh_target_dirs(opts: Dict[str, Any], namespace: str) -> tuple[str, ...] | None:
+    """Resolve the roster target through the same project activation rules."""
+    active = _get_ssh_active_set(opts)
+    if active is None:
+        return None
     return tuple(
         str(directory.resolve())
         for package in active.packages
@@ -412,20 +431,3 @@ def fileserver_dirs(opts: Dict[str, Any] = None) -> List[str]:
     return paths
 
 
-def configure(opts: Dict[str, Any] = None) -> Dict[str, Any]:
-    """
-    Configure Salt options for vendor formulas.
-
-    NOTE: We do NOT add vendor_dir to file_roots because this causes
-    Salt to recursively copy _modules and _states directories into cache,
-    creating infinite nesting (modules/modules/modules/...).
-
-    Instead, modules and states are loaded via module_dirs() and states_dirs()
-    hooks, which Salt's loader calls directly.
-    """
-    if opts is None:
-        opts = globals().get("__opts__", {})
-
-    # Just return opts without modification
-    # Module/state loading is handled by module_dirs() and states_dirs()
-    return opts
